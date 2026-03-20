@@ -26,6 +26,7 @@ import {
 } from 'recharts';
 import { Order, Driver } from '../types';
 import Map from './Map';
+import { getCarrierPerformance, getDashboardStats } from '../shared/selectors/carrierMetrics';
 
 const CHART_DATA = [
   { name: 'Lun', entregas: 45, fallidas: 2 },
@@ -36,27 +37,6 @@ const CHART_DATA = [
   { name: 'Sab', entregas: 70, fallidas: 2 },
   { name: 'Dom', entregas: 25, fallidas: 0 },
 ];
-
-const CARRIER_COLORS: Record<string, string> = {
-  Shalom: '#10b981',
-  Urbano: '#f97316',
-  Marvi: '#3b82f6',
-  'Flota Propia': '#6366f1',
-};
-
-const parseRelativeTimeToMinutes = (timeLabel: string) => {
-  const normalized = timeLabel.trim().toLowerCase();
-
-  if (normalized === 'ahora') return 0;
-
-  const match = normalized.match(/hace\s+(\d+)\s*(min|hr)/);
-  if (!match) return 0;
-
-  const value = Number(match[1]);
-  const unit = match[2];
-
-  return unit === 'hr' ? value * 60 : value;
-};
 
 const formatDuration = (minutes: number) => {
   if (minutes >= 60) {
@@ -95,12 +75,12 @@ interface DashboardProps {
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ orders, drivers, onNewOrder, onViewAllOrders, onViewRoutes }) => {
-  const stats = useMemo(() => ({
-    entregados: orders.filter(o => o.status === 'Entregado').length,
-    enRuta: orders.filter(o => o.status === 'En Ruta').length,
-    pendientes: orders.filter(o => o.status === 'Pendiente').length,
-    incidencias: orders.filter(o => o.status === 'Retrasado').length,
-  }), [orders]);
+  const stats = useMemo(() => getDashboardStats(orders), [orders]);
+  const carrierPerformance = useMemo(() => getCarrierPerformance(orders), [orders]);
+
+  const leadingCarrier = carrierPerformance[0];
+  const lowestCostCarrier = [...carrierPerformance].sort((a, b) => a.avgCost - b.avgCost)[0];
+  const mostIncidentsCarrier = [...carrierPerformance].sort((a, b) => b.delayedOrders - a.delayedOrders)[0];
 
   const carrierPerformance = useMemo(() => {
     const grouped: Record<string, Order[]> = {};
