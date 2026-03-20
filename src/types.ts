@@ -1,5 +1,15 @@
 export type OrderStatus = 'Pendiente' | 'En Ruta' | 'Entregado' | 'Retrasado' | 'Cancelado';
 
+export interface PodProof {
+  recipientName: string;
+  recipientDocument?: string;
+  notes?: string;
+  signature?: string;
+  photo: string;
+  deliveredAt: string;
+  acknowledgedByDriver: boolean;
+}
+
 export interface Order {
   id: string;
   status: OrderStatus;
@@ -14,6 +24,7 @@ export interface Order {
   value: number;
   lat?: number;
   lng?: number;
+  pod?: PodProof;
 }
 
 export interface Driver {
