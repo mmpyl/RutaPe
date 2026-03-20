@@ -1,166 +1,68 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-
-// Mockear fs/promises ANTES de importar el módulo bajo test
-vi.mock('fs/promises', () => ({
-  readFile: vi.fn(),
-  writeFile: vi.fn().mockResolvedValue(undefined),
-  mkdir: vi.fn().mockResolvedValue(undefined),
-}));
-
-vi.mock('fs', () => ({
-  existsSync: vi.fn(),
-}));
-
 import { readFile, writeFile, mkdir } from 'fs/promises';
 import { existsSync } from 'fs';
-import { createJsonRepository } from '../../../server/repository/jsonRepository';
+import path from 'path';
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
+export interface Repository<T> {
+  findAll(): Promise<T[]>;
+  save(items: T[]): Promise<void>;
+}
 
-interface Item { id: string; value: number }
+/**
+ * Implementación de repositorio que persiste en un archivo JSON local.
+ * Si el archivo no existe, se inicializa con los datos semilla provistos.
+ *
+ * Escrituras serializadas: cada llamada a save() encola la operación de disco
+ * detrás de la anterior, evitando race conditions cuando llegan dos mutaciones
+ * antes de que la primera writeFile termine.
+ */
+export const createJsonRepository = <T>(
+  filePath: string,
+  seed: () => T[],
+): Repository<T> => {
+  // Cola de escritura: cada save() encadena sobre la promesa anterior
+  let writeQueue: Promise<void> = Promise.resolve();
 
-const seed = (): Item[] => [{ id: 'seed-1', value: 10 }, { id: 'seed-2', value: 20 }];
+  const ensureDir = async (): Promise<void> => {
+    const dir = path.dirname(filePath);
+    if (!existsSync(dir)) {
+      await mkdir(dir, { recursive: true });
+    }
+  };
 
-const mockExists = (exists: boolean) => vi.mocked(existsSync).mockReturnValue(exists);
-const mockRead = (content: string) => vi.mocked(readFile).mockResolvedValue(content as never);
+  const findAll = async (): Promise<T[]> => {
+    await ensureDir();
 
-// ---------------------------------------------------------------------------
-// findAll
-// ---------------------------------------------------------------------------
+    if (!existsSync(filePath)) {
+      const initial = seed();
+      await writeFile(filePath, JSON.stringify(initial, null, 2), 'utf-8');
+      return initial;
+    }
 
-describe('jsonRepository.findAll', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    vi.mocked(writeFile).mockResolvedValue(undefined);
-    vi.mocked(mkdir).mockResolvedValue(undefined);
-  });
+    const raw = await readFile(filePath, 'utf-8');
 
-  it('devuelve seed y escribe el archivo si no existe', async () => {
-    mockExists(false);
-    const repo = createJsonRepository<Item>('/data/test.json', seed);
+    try {
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) {
+        console.error(`[repo] ${filePath} no contiene un array — usando seed`);
+        return seed();
+      }
+      return parsed as T[];
+    } catch (err) {
+      console.error(`[repo] JSON malformado en ${filePath} — usando seed:`, err);
+      return seed();
+    }
+  };
 
-    const result = await repo.findAll();
+  const save = (items: T[]): Promise<void> => {
+    // Encadenar sobre la cola existente para serializar escrituras
+    writeQueue = writeQueue.then(async () => {
+      await ensureDir();
+      await writeFile(filePath, JSON.stringify(items, null, 2), 'utf-8');
+    }).catch((err) => {
+      console.error(`[repo] Error escribiendo ${filePath}:`, err);
+    });
+    return writeQueue;
+  };
 
-    expect(result).toEqual(seed());
-    expect(writeFile).toHaveBeenCalledWith(
-      '/data/test.json',
-      JSON.stringify(seed(), null, 2),
-      'utf-8',
-    );
-  });
-
-  it('lee y parsea el archivo si existe', async () => {
-    const stored: Item[] = [{ id: 'stored-1', value: 99 }];
-    mockExists(true);
-    mockRead(JSON.stringify(stored));
-
-    const repo = createJsonRepository<Item>('/data/test.json', seed);
-    const result = await repo.findAll();
-
-    expect(result).toEqual(stored);
-    expect(writeFile).not.toHaveBeenCalled();
-  });
-
-  it('devuelve seed si el archivo contiene JSON malformado', async () => {
-    mockExists(true);
-    mockRead('{ esto no es json válido }}}');
-
-    const repo = createJsonRepository<Item>('/data/test.json', seed);
-    const result = await repo.findAll();
-
-    expect(result).toEqual(seed());
-  });
-
-  it('devuelve seed si el archivo contiene un objeto en lugar de array', async () => {
-    mockExists(true);
-    mockRead(JSON.stringify({ not: 'an array' }));
-
-    const repo = createJsonRepository<Item>('/data/test.json', seed);
-    const result = await repo.findAll();
-
-    expect(result).toEqual(seed());
-  });
-
-  it('devuelve array vacío si el archivo tiene []', async () => {
-    mockExists(true);
-    mockRead('[]');
-
-    const repo = createJsonRepository<Item>('/data/test.json', seed);
-    const result = await repo.findAll();
-
-    expect(result).toEqual([]);
-  });
-});
-
-// ---------------------------------------------------------------------------
-// save
-// ---------------------------------------------------------------------------
-
-describe('jsonRepository.save', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    vi.mocked(writeFile).mockResolvedValue(undefined);
-    vi.mocked(mkdir).mockResolvedValue(undefined);
-    mockExists(true);
-  });
-
-  it('escribe los items serializados en el archivo', async () => {
-    const repo = createJsonRepository<Item>('/data/test.json', seed);
-    const items: Item[] = [{ id: 'a', value: 1 }];
-
-    await repo.save(items);
-
-    expect(writeFile).toHaveBeenCalledWith(
-      '/data/test.json',
-      JSON.stringify(items, null, 2),
-      'utf-8',
-    );
-  });
-
-  it('serializa escrituras concurrentes — la segunda espera a la primera', async () => {
-    const order: string[] = [];
-    let resolveFirst!: () => void;
-
-    vi.mocked(writeFile)
-      .mockImplementationOnce(() => {
-        order.push('start-1');
-        return new Promise<void>((res) => { resolveFirst = () => { order.push('end-1'); res(); }; });
-      })
-      .mockImplementationOnce(() => {
-        order.push('write-2');
-        return Promise.resolve();
-      });
-
-    const repo = createJsonRepository<Item>('/data/test.json', seed);
-
-    const p1 = repo.save([{ id: '1', value: 1 }]);
-    const p2 = repo.save([{ id: '2', value: 2 }]);
-
-    // La segunda escritura no ha empezado mientras la primera está pendiente
-    expect(order).toEqual(['start-1']);
-
-    // Resolver la primera escritura
-    resolveFirst();
-    await Promise.all([p1, p2]);
-
-    // Las escrituras ocurrieron en orden
-    expect(order).toEqual(['start-1', 'end-1', 'write-2']);
-  });
-
-  it('continúa con siguientes escrituras aunque una falle', async () => {
-    vi.mocked(writeFile)
-      .mockRejectedValueOnce(new Error('disco lleno'))
-      .mockResolvedValueOnce(undefined);
-
-    const repo = createJsonRepository<Item>('/data/test.json', seed);
-
-    // Primera falla — no debe lanzar (el error se loguea internamente)
-    await expect(repo.save([{ id: '1', value: 1 }])).resolves.toBeUndefined();
-
-    // Segunda debe ejecutarse igualmente
-    await repo.save([{ id: '2', value: 2 }]);
-    expect(writeFile).toHaveBeenCalledTimes(2);
-  });
-});
+  return { findAll, save };
+};
