@@ -6,8 +6,10 @@ import {
   AlertCircle, 
   Plus, 
   ArrowUpRight, 
-  Navigation, 
-  MoreVertical 
+  MoreVertical,
+  TrendingUp,
+  BadgeCheck,
+  Wallet
 } from 'lucide-react';
 import { 
   AreaChart, 
@@ -16,10 +18,15 @@ import {
   YAxis, 
   CartesianGrid, 
   Tooltip, 
-  ResponsiveContainer 
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  Legend,
+  Cell
 } from 'recharts';
 import { Order, Driver } from '../types';
 import Map from './Map';
+import { getCarrierPerformance, getDashboardStats } from '../shared/selectors/carrierMetrics';
 
 const CHART_DATA = [
   { name: 'Lun', entregas: 45, fallidas: 2 },
@@ -30,6 +37,17 @@ const CHART_DATA = [
   { name: 'Sab', entregas: 70, fallidas: 2 },
   { name: 'Dom', entregas: 25, fallidas: 0 },
 ];
+
+const formatDuration = (minutes: number) => {
+  if (minutes >= 60) {
+    const hours = minutes / 60;
+    return `${hours.toFixed(1)} h`;
+  }
+
+  return `${Math.round(minutes)} min`;
+};
+
+const formatCurrency = (amount: number) => `S/ ${amount.toFixed(0)}`;
 
 const StatCard = ({ label, value, icon: Icon, color, trend }: { label: string, value: string | number, icon: any, color: string, trend?: string }) => (
   <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
@@ -57,12 +75,12 @@ interface DashboardProps {
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ orders, drivers, onNewOrder, onViewAllOrders, onViewRoutes }) => {
-  const stats = useMemo(() => ({
-    entregados: orders.filter(o => o.status === 'Entregado').length,
-    enRuta: orders.filter(o => o.status === 'En Ruta').length,
-    pendientes: orders.filter(o => o.status === 'Pendiente').length,
-    incidencias: orders.filter(o => o.status === 'Retrasado').length,
-  }), [orders]);
+  const stats = useMemo(() => getDashboardStats(orders), [orders]);
+  const carrierPerformance = useMemo(() => getCarrierPerformance(orders), [orders]);
+
+  const leadingCarrier = carrierPerformance[0];
+  const lowestCostCarrier = [...carrierPerformance].sort((a, b) => a.avgCost - b.avgCost)[0];
+  const mostIncidentsCarrier = [...carrierPerformance].sort((a, b) => b.delayedOrders - a.delayedOrders)[0];
 
   return (
     <div className="space-y-8">
@@ -84,6 +102,118 @@ const Dashboard: React.FC<DashboardProps> = ({ orders, drivers, onNewOrder, onVi
         <StatCard label="En Ruta" value={stats.enRuta} icon={Truck} color="bg-blue-600" />
         <StatCard label="Pendientes" value={stats.pendientes} icon={Clock} color="bg-amber-600" trend="-5%" />
         <StatCard label="Incidencias" value={stats.incidencias} icon={AlertCircle} color="bg-red-600" />
+      </div>
+
+      <div className="bg-white p-8 rounded-[32px] border border-slate-100 shadow-sm space-y-8">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+          <div>
+            <div className="inline-flex items-center gap-2 bg-emerald-50 text-emerald-700 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-[0.2em] mb-3">
+              SLA Monitoring
+            </div>
+            <h3 className="font-bold text-slate-900 text-xl">Análisis de Rendimiento por Carrier</h3>
+            <p className="text-sm text-slate-500 max-w-3xl mt-1">
+              Compara el cumplimiento de promesa, el tiempo promedio de entrega y el costo medio por despacho entre carriers para decidir a quién asignar más volumen.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-3 text-xs font-bold text-slate-500">
+            <div className="px-3 py-2 rounded-xl bg-slate-50 border border-slate-100">Promedio de entrega basado en pedidos completados y activos</div>
+            <div className="px-3 py-2 rounded-xl bg-slate-50 border border-slate-100">SLA = % de pedidos sin retraso registrado</div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="rounded-3xl bg-emerald-50 border border-emerald-100 p-5">
+            <div className="flex items-center gap-2 text-emerald-700 font-bold text-sm mb-3">
+              <BadgeCheck size={16} /> Mejor cumplimiento
+            </div>
+            <div className="text-2xl font-black text-slate-900">{leadingCarrier?.carrier ?? 'Sin datos'}</div>
+            <div className="text-sm text-slate-500 mt-1">
+              {leadingCarrier ? `${leadingCarrier.sla}% SLA · ${formatDuration(leadingCarrier.avgDeliveryMinutes)} promedio` : 'Aún no hay carriers suficientes para comparar'}
+            </div>
+          </div>
+          <div className="rounded-3xl bg-blue-50 border border-blue-100 p-5">
+            <div className="flex items-center gap-2 text-blue-700 font-bold text-sm mb-3">
+              <Wallet size={16} /> Opción más eficiente en costo
+            </div>
+            <div className="text-2xl font-black text-slate-900">{lowestCostCarrier?.carrier ?? 'Sin datos'}</div>
+            <div className="text-sm text-slate-500 mt-1">
+              {lowestCostCarrier ? `${formatCurrency(lowestCostCarrier.avgCost)} promedio por envío` : 'Sin volumen suficiente para análisis de costo'}
+            </div>
+          </div>
+          <div className="rounded-3xl bg-amber-50 border border-amber-100 p-5">
+            <div className="flex items-center gap-2 text-amber-700 font-bold text-sm mb-3">
+              <TrendingUp size={16} /> Riesgo a monitorear
+            </div>
+            <div className="text-2xl font-black text-slate-900">{mostIncidentsCarrier?.carrier ?? 'Sin datos'}</div>
+            <div className="text-sm text-slate-500 mt-1">
+              {mostIncidentsCarrier ? `${mostIncidentsCarrier.delayedOrders} incidencias · ${mostIncidentsCarrier.sla}% SLA` : 'Sin incidencias registradas'}
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 xl:grid-cols-5 gap-8">
+          <div className="xl:col-span-3 h-[320px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={carrierPerformance} barGap={14}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                <XAxis dataKey="carrier" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#94a3b8' }} dy={10} />
+                <YAxis yAxisId="left" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#94a3b8' }} />
+                <YAxis yAxisId="right" orientation="right" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#94a3b8' }} />
+                <Tooltip
+                  contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                  formatter={(value: number, name: string) => {
+                    if (name === 'Tiempo Promedio (h)') return [`${value.toFixed(1)} h`, name];
+                    if (name === 'Costo Promedio (S/)') return [`S/ ${value.toFixed(2)}`, name];
+                    return [value, name];
+                  }}
+                />
+                <Legend wrapperStyle={{ fontSize: 12 }} />
+                <Bar yAxisId="left" dataKey="avgHours" name="Tiempo Promedio (h)" radius={[10, 10, 0, 0]}>
+                  {carrierPerformance.map((entry) => (
+                    <Cell key={`${entry.carrier}-time`} fill={entry.color} fillOpacity={0.95} />
+                  ))}
+                </Bar>
+                <Bar yAxisId="right" dataKey="avgCost" name="Costo Promedio (S/)" radius={[10, 10, 0, 0]} fill="#cbd5e1" />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+
+          <div className="xl:col-span-2 space-y-4">
+            {carrierPerformance.map((carrier) => (
+              <div key={carrier.carrier} className="rounded-3xl border border-slate-100 bg-slate-50 p-5">
+                <div className="flex items-center justify-between gap-4 mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-11 h-11 rounded-2xl text-white font-black text-xs flex items-center justify-center shadow-sm" style={{ backgroundColor: carrier.color }}>
+                      {carrier.logo}
+                    </div>
+                    <div>
+                      <div className="font-bold text-slate-900">{carrier.carrier}</div>
+                      <div className="text-[11px] text-slate-400">{carrier.totalOrders} pedidos evaluados</div>
+                    </div>
+                  </div>
+                  <span className={`text-[10px] font-bold px-3 py-1 rounded-full ${carrier.sla >= 80 ? 'bg-emerald-100 text-emerald-700' : carrier.sla >= 60 ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'}`}>
+                    SLA {carrier.sla}%
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-3 gap-3 text-center">
+                  <div className="bg-white rounded-2xl p-3 border border-slate-100">
+                    <div className="text-lg font-black text-slate-900">{formatDuration(carrier.avgDeliveryMinutes)}</div>
+                    <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Tiempo</div>
+                  </div>
+                  <div className="bg-white rounded-2xl p-3 border border-slate-100">
+                    <div className="text-lg font-black text-slate-900">{formatCurrency(carrier.avgCost)}</div>
+                    <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Costo</div>
+                  </div>
+                  <div className="bg-white rounded-2xl p-3 border border-slate-100">
+                    <div className="text-lg font-black text-slate-900">{carrier.deliveredRate}%</div>
+                    <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Entregado</div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
