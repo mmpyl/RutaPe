@@ -82,6 +82,51 @@ const Dashboard: React.FC<DashboardProps> = ({ orders, drivers, onNewOrder, onVi
   const lowestCostCarrier = [...carrierPerformance].sort((a, b) => a.avgCost - b.avgCost)[0];
   const mostIncidentsCarrier = [...carrierPerformance].sort((a, b) => b.delayedOrders - a.delayedOrders)[0];
 
+  const carrierPerformance = useMemo(() => {
+    const grouped: Record<string, Order[]> = {};
+
+    orders.forEach((order) => {
+      const carrierName = order.carrier || 'Flota Propia';
+      if (!grouped[carrierName]) {
+        grouped[carrierName] = [];
+      }
+      grouped[carrierName].push(order);
+    });
+
+    return Object.entries(grouped)
+      .map(([carrier, carrierOrders]: [string, Order[]]) => {
+        const completedOrders = carrierOrders.filter(order => order.status === 'Entregado');
+        const activeOrders = carrierOrders.filter(order => order.status !== 'Pendiente');
+        const delayedOrders = carrierOrders.filter(order => order.status === 'Retrasado').length;
+        const onTimeOrders = carrierOrders.filter(order => order.status !== 'Retrasado').length;
+        const avgDeliveryMinutes = (completedOrders.length ? completedOrders : activeOrders)
+          .reduce((sum, order) => sum + parseRelativeTimeToMinutes(order.time), 0) /
+          Math.max((completedOrders.length ? completedOrders : activeOrders).length, 1);
+        const avgCost = carrierOrders.reduce((sum, order) => sum + order.value, 0) / carrierOrders.length;
+        const sla = Math.round((onTimeOrders / carrierOrders.length) * 100);
+        const deliveredRate = Math.round((completedOrders.length / carrierOrders.length) * 100);
+        const avgHours = Number((avgDeliveryMinutes / 60).toFixed(1));
+
+        return {
+          carrier,
+          logo: carrierOrders[0]?.carrierLogo || carrier.slice(0, 2).toUpperCase(),
+          color: CARRIER_COLORS[carrier] || '#64748b',
+          totalOrders: carrierOrders.length,
+          delayedOrders,
+          sla,
+          deliveredRate,
+          avgDeliveryMinutes,
+          avgHours,
+          avgCost,
+        };
+      })
+      .sort((a, b) => b.sla - a.sla || a.avgDeliveryMinutes - b.avgDeliveryMinutes);
+  }, [orders]);
+
+  const leadingCarrier = carrierPerformance[0];
+  const lowestCostCarrier = [...carrierPerformance].sort((a, b) => a.avgCost - b.avgCost)[0];
+  const mostIncidentsCarrier = [...carrierPerformance].sort((a, b) => b.delayedOrders - a.delayedOrders)[0];
+
   return (
     <div className="space-y-8">
       <div className="flex justify-between items-center">
