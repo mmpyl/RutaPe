@@ -1,3 +1,5 @@
+import { isApiErrorBody } from '../contracts/guards';
+
 export class ApiError extends Error {
   constructor(
     message: string,
@@ -10,9 +12,13 @@ export class ApiError extends Error {
 
 const parseErrorMessage = async (response: Response, fallback: string): Promise<string> => {
   try {
-    const data = await response.json();
-    if (typeof data?.error === 'string') return data.error;
-    if (typeof data?.message === 'string') return data.message;
+    const data: unknown = await response.json();
+    if (isApiErrorBody(data)) return data.error;
+    // Algunos servidores devuelven { message } en lugar de { error }
+    if (typeof data === 'object' && data !== null && 'message' in data) {
+      const msg = (data as Record<string, unknown>).message;
+      if (typeof msg === 'string') return msg;
+    }
   } catch {
     // respuesta sin JSON — usar fallback
   }
