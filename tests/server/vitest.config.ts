@@ -9,8 +9,11 @@ export default defineConfig({
       reporter: ['text', 'lcov'],
       include: [
         'src/shared/contracts/**',
+        'src/shared/api/**',
         'server/services/**',
         'server/validation/**',
+        'server/repository/**',
+        'server/http/**',
       ],
     },
   },
