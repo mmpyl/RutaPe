@@ -33,7 +33,23 @@ const setOrders = (next: Order[]) => {
 };
 
 const getDrivers = () => drivers;
-const setDrivers = (next: Driver[]) => { drivers = next; };
+
+// Actualiza solo posición GPS en memoria — no persiste para evitar escrituras
+// excesivas cada 3 segundos desde la simulación.
+const setDriversGps = (next: Driver[]) => { drivers = next; };
+
+// Actualiza estado de conductor (Disponible <-> En Ruta) y persiste en disco.
+// Preserva la posición GPS actual en memoria para no perder la posición simulada.
+const setDrivers = (next: Driver[]) => {
+  const withCurrentGps = next.map((d) => {
+    const current = drivers.find((c) => c.id === d.id);
+    return current ? { ...d, lat: current.lat, lng: current.lng } : d;
+  });
+  drivers = withCurrentGps;
+  driversRepository.save(withCurrentGps).catch((err) =>
+    console.error('[repo] Error guardando conductores:', err),
+  );
+};
 
 const getRoutes = () => routes;
 const setRoutes = (next: Route[]) => {
@@ -74,7 +90,7 @@ async function startServer() {
     realtime,
   );
 
-  const simulationTimer = startDriverSimulation(getDrivers, setDrivers, realtime);
+  const simulationTimer = startDriverSimulation(getDrivers, setDriversGps, realtime);
   server.on('close', () => clearInterval(simulationTimer));
 
   app.use('/api', createApiRouter(ordersService, routesService, getDrivers));
