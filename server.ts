@@ -40,6 +40,30 @@ const hasValidCoordinates = (payload: Record<string, unknown>) => {
 const validateOrderStatus = (value: unknown): value is Order["status"] =>
   typeof value === "string" && ORDER_STATUSES.includes(value as Order["status"]);
 
+const validatePodPayload = (value: unknown) => {
+  if (!isRecord(value)) return "La evidencia POD debe enviarse como un objeto válido";
+  if (!isNonEmptyString(value.recipientName)) return "La evidencia POD requiere el nombre del receptor";
+  if (!isNonEmptyString(value.photo)) return "La evidencia POD requiere una foto de entrega";
+  if (!isNonEmptyString(value.deliveredAt)) return "La evidencia POD requiere la fecha de entrega";
+  if (value.recipientDocument !== undefined && !isNonEmptyString(value.recipientDocument)) return "El documento del receptor debe ser un texto no vacío";
+  if (value.notes !== undefined && !isNonEmptyString(value.notes)) return "Las notas de entrega deben ser un texto no vacío";
+  if (value.signature !== undefined && !isNonEmptyString(value.signature)) return "La firma digital debe ser un texto no vacío";
+  if (typeof value.acknowledgedByDriver !== "boolean") return "La evidencia POD debe indicar confirmación del repartidor";
+
+  return null;
+};
+
+const sanitizePodPayload = (value: Record<string, unknown>) => ({
+  recipientName: String(value.recipientName).trim(),
+  ...(value.recipientDocument !== undefined ? { recipientDocument: String(value.recipientDocument).trim() } : {}),
+  ...(value.notes !== undefined ? { notes: String(value.notes).trim() } : {}),
+  ...(value.signature !== undefined ? { signature: String(value.signature) } : {}),
+  photo: String(value.photo),
+  deliveredAt: String(value.deliveredAt),
+  acknowledgedByDriver: Boolean(value.acknowledgedByDriver),
+});
+
+
 const validateCreateOrderPayload = (payload: unknown) => {
   if (!isRecord(payload)) return "El cuerpo de la solicitud debe ser un objeto JSON válido";
   if (!isNonEmptyString(payload.client)) return "El cliente es obligatorio";
@@ -50,6 +74,10 @@ const validateCreateOrderPayload = (payload: unknown) => {
   if (payload.time !== undefined && !isNonEmptyString(payload.time)) return "El tiempo debe ser un texto no vacío";
   if (payload.carrier !== undefined && !isNonEmptyString(payload.carrier)) return "El carrier debe ser un texto no vacío";
   if (payload.carrierLogo !== undefined && !isNonEmptyString(payload.carrierLogo)) return "El logo del carrier debe ser un texto no vacío";
+  if (payload.pod !== undefined) {
+    const podError = validatePodPayload(payload.pod);
+    if (podError) return podError;
+  }
   if (!hasValidCoordinates(payload)) return "Latitud y longitud deben enviarse juntas y ser numéricas";
 
   return null;
@@ -71,6 +99,7 @@ const validateOrderPatchPayload = (payload: unknown) => {
     "carrierLogo",
     "lat",
     "lng",
+    "pod",
   ]);
 
   const payloadKeys = Object.keys(payload);
@@ -86,6 +115,10 @@ const validateOrderPatchPayload = (payload: unknown) => {
   if (payload.driverId !== undefined && !isNonEmptyString(payload.driverId)) return "El conductor debe ser un texto no vacío";
   if (payload.carrier !== undefined && !isNonEmptyString(payload.carrier)) return "El carrier debe ser un texto no vacío";
   if (payload.carrierLogo !== undefined && !isNonEmptyString(payload.carrierLogo)) return "El logo del carrier debe ser un texto no vacío";
+  if (payload.pod !== undefined) {
+    const podError = validatePodPayload(payload.pod);
+    if (podError) return podError;
+  }
   if (!hasValidCoordinates(payload)) return "Latitud y longitud deben enviarse juntas y ser numéricas";
 
   return null;
@@ -107,6 +140,7 @@ const buildOrderPayload = (payload: Record<string, unknown>, existingOrder?: Ord
     ...(payload.carrierLogo !== undefined ? { carrierLogo: String(payload.carrierLogo).trim() } : {}),
     ...(payload.lat !== undefined ? { lat: payload.lat as number } : {}),
     ...(payload.lng !== undefined ? { lng: payload.lng as number } : {}),
+    ...(payload.pod !== undefined && isRecord(payload.pod) ? { pod: sanitizePodPayload(payload.pod) } : {}),
     status,
     time: payload.time !== undefined ? String(payload.time).trim() : existingOrder?.time ?? "Ahora",
     color: payload.color !== undefined ? String(payload.color) : ORDER_COLORS[status],
