@@ -11,7 +11,7 @@ import Settings from './components/Settings';
 import LandingPage from './components/LandingPage';
 import NewOrderModal from './components/Modals/NewOrderModal';
 import PodModal from './components/Modals/PodModal';
-import { Order } from './types';
+import { Order, PodProof } from './types';
 
 const App: React.FC = () => {
   const [view, setView] = useState<'plan' | 'demo'>('plan');
@@ -85,12 +85,12 @@ const App: React.FC = () => {
     }
   };
 
-  const handlePodSubmit = async (data: any) => {
+  const handlePodSubmit = async (data: PodProof) => {
     if (podModal.orderId) {
       try {
-        await updateOrder(podModal.orderId, { status: 'Entregado', color: 'bg-emerald-100 text-emerald-700' });
+        await updateOrder(podModal.orderId, { status: 'Entregado', color: 'bg-emerald-100 text-emerald-700', time: 'Ahora', pod: data });
         setPodModal({ isOpen: false, orderId: null });
-        showToast('Entrega confirmada con éxito');
+        showToast(`Entrega confirmada con evidencia para ${data.recipientName}`);
       } catch (err) {
         showToast('Error al confirmar entrega', 'error');
       }
