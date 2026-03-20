@@ -8,7 +8,7 @@
  * de tipo predicado que TypeScript entiende directamente.
  */
 
-import { Order, Driver, Route, OrderStatus } from '../../types';
+import { Order, Driver, Route, OrderStatus, PodProof } from '../../types';
 
 // ---------------------------------------------------------------------------
 // Primitivos
@@ -74,6 +74,20 @@ export const isRoute = (v: unknown): v is Route => {
     isString(v.status) &&
     isNumber(v.progress)
   );
+};
+
+export const isPodProof = (v: unknown): v is PodProof => {
+  if (!isObject(v)) return false;
+  // Campos obligatorios
+  if (!isString(v.recipientName) || v.recipientName.trim().length === 0) return false;
+  if (!isString(v.photo) || v.photo.length === 0) return false;
+  if (!isString(v.deliveredAt) || v.deliveredAt.length === 0) return false;
+  if (!isBoolean(v.acknowledgedByDriver)) return false;
+  // Campos opcionales — si presentes deben ser strings no vacíos
+  if (v.recipientDocument !== undefined && !isString(v.recipientDocument)) return false;
+  if (v.notes !== undefined && !isString(v.notes)) return false;
+  if (v.signature !== undefined && !isString(v.signature)) return false;
+  return true;
 };
 
 // ---------------------------------------------------------------------------
@@ -178,3 +192,11 @@ export const isDriverArray = (v: unknown): v is Driver[] =>
 
 export const isRouteArray = (v: unknown): v is Route[] =>
   isArray(v) && v.every(isRoute);
+
+export interface WhatsAppAlertResponse {
+  success: boolean;
+  message: string;
+}
+
+export const isWhatsAppAlertResponse = (v: unknown): v is WhatsAppAlertResponse =>
+  isObject(v) && isBoolean(v.success) && isString(v.message);
