@@ -130,6 +130,32 @@ describe('ordersService.create', () => {
     expect(service.create('string').ok).toBe(false);
     expect(service.create(42).ok).toBe(false);
   });
+
+  it('genera un id con formato UUID v4', () => {
+    const service = createOrdersService(getOrders, setOrders, realtime);
+    const result = service.create({ client: 'Test', address: 'Dir', items: 1, value: 10 });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    // UUID v4: xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx
+    expect(result.data.id).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+    );
+  });
+
+  it('genera ids distintos en creaciones consecutivas', () => {
+    const service = createOrdersService(getOrders, setOrders, realtime);
+    const base = { client: 'Test', address: 'Dir', items: 1, value: 10 };
+
+    const ids = new Set<string>();
+    // Crear 20 pedidos y verificar que no hay colisiones
+    for (let i = 0; i < 20; i++) {
+      const result = service.create(base);
+      if (result.ok) ids.add(result.data.id);
+    }
+
+    expect(ids.size).toBe(20);
+  });
 });
 
 // ---------------------------------------------------------------------------
