@@ -56,6 +56,7 @@ const Orders: React.FC<OrdersProps> = ({
         </div>
       </div>
 
+      {/* Search + filters */}
       <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex flex-col md:flex-row gap-4">
         <div className="flex-1 relative">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
@@ -77,18 +78,20 @@ const Orders: React.FC<OrdersProps> = ({
         </div>
       </div>
 
+      {/* Table */}
       <div className="bg-white rounded-[32px] border border-slate-100 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left">
             <thead>
               <tr className="bg-slate-50/50">
-                <th className="px-8 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">ID</th>
-                <th className="px-8 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Cliente</th>
-                <th className="px-8 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Carrier</th>
-                <th className="px-8 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Estado</th>
-                <th className="px-8 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Items</th>
-                <th className="px-8 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Valor</th>
-                <th className="px-8 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Acciones</th>
+                {['ID', 'Cliente', 'Carrier', 'Estado', 'Items', 'Valor', 'Acciones'].map((h) => (
+                  <th
+                    key={h}
+                    className="px-8 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest"
+                  >
+                    {h}
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
