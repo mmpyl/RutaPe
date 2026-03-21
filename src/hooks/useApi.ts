@@ -9,7 +9,21 @@ import {
 } from '../shared/api/logistics';
 import { connectLogisticsSocket } from '../shared/realtime/socket';
 
-export const useApi = () => {
+export interface UseApiReturn {
+  orders: Order[];
+  drivers: Driver[];
+  routes: Route[];
+  loading: boolean;
+  error: string | null;
+  wsStatus: 'connecting' | 'connected' | 'reconnecting';
+  fetchData: () => Promise<void>;
+  addOrder: (order: Partial<Order>) => Promise<Order>;
+  updateOrder: (id: string, updates: Partial<Order>) => Promise<Order>;
+  sendAlert: (orderId: string) => Promise<{ success: boolean; message: string }>;
+  optimizeRoutes: () => Promise<{ message: string; routes: Route[] }>;
+}
+
+export const useApi = (): UseApiReturn => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [routes, setRoutes] = useState<Route[]>([]);
@@ -25,7 +39,7 @@ export const useApi = () => {
       setRoutes(snapshot.routes);
       setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
+      setError(err instanceof Error ? err.message : 'Error al cargar datos');
     } finally {
       setLoading(false);
     }
@@ -53,38 +67,41 @@ export const useApi = () => {
     };
   }, [fetchData]);
 
-  const addOrder = async (order: Partial<Order>) => {
+  const addOrder = useCallback(async (order: Partial<Order>): Promise<Order> => {
     try {
       const newOrder = await createOrderRequest(order);
       setError(null);
       return newOrder;
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
+      const message = err instanceof Error ? err.message : 'Error al crear pedido';
+      setError(message);
       throw err;
     }
-  };
+  }, []);
 
-  const updateOrder = async (id: string, updates: Partial<Order>) => {
+  const updateOrder = useCallback(async (id: string, updates: Partial<Order>): Promise<Order> => {
     try {
       const updatedOrder = await updateOrderRequest(id, updates);
       setError(null);
       return updatedOrder;
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
+      const message = err instanceof Error ? err.message : 'Error al actualizar pedido';
+      setError(message);
       throw err;
     }
-  };
+  }, []);
 
-  const sendAlert = async (orderId: string) => {
+  const sendAlert = useCallback(async (orderId: string) => {
     try {
       const response = await sendWhatsappAlertRequest(orderId);
       setError(null);
       return response;
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
+      const message = err instanceof Error ? err.message : 'Error al enviar alerta';
+      setError(message);
       throw err;
     }
-  };
+  }, []);
 
   const optimizeRoutes = async (): Promise<RouteOptimizationResponse> => {
     try {
@@ -93,12 +110,13 @@ export const useApi = () => {
       setError(null);
       return data;
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
+      const message = err instanceof Error ? err.message : 'Error al optimizar rutas';
+      setError(message);
       throw err;
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   return {
     orders,
@@ -106,6 +124,7 @@ export const useApi = () => {
     routes,
     loading,
     error,
+    wsStatus,
     fetchData,
     addOrder,
     updateOrder,

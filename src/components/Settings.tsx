@@ -18,13 +18,27 @@ const Settings: React.FC = () => {
         <p className="text-slate-500 font-medium mt-1">Conecta tus sistemas externos con LogiPerú de forma segura.</p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      {/* Left column */}
+      <div className="lg:col-span-2 space-y-6">
         {/* API Keys */}
-        <div className="lg:col-span-2 space-y-6">
-          <div className="bg-white p-10 rounded-[40px] border border-slate-100 shadow-sm space-y-8">
-            <div className="flex items-center gap-4">
-              <div className="p-4 bg-emerald-50 text-emerald-600 rounded-2xl">
-                <Key size={24} />
+        <div className="bg-white p-10 rounded-[40px] border border-slate-100 shadow-sm space-y-8">
+          <div className="flex items-center gap-4">
+            <div className="p-4 bg-emerald-50 text-emerald-600 rounded-2xl">
+              <Key size={24} />
+            </div>
+            <div>
+              <h3 className="text-xl font-bold text-slate-900">Claves de API</h3>
+              <p className="text-sm text-slate-400">
+                Las credenciales sensibles se gestionan fuera del cliente para evitar exposiciones.
+              </p>
+            </div>
+          </div>
+
+          <div className="rounded-[32px] border border-emerald-100 bg-emerald-50 p-6 space-y-4">
+            <div className="flex items-start gap-4">
+              <div className="p-3 bg-white text-emerald-600 rounded-2xl shadow-sm border border-emerald-100">
+                <Lock size={20} />
               </div>
               <div>
                 <h3 className="text-xl font-bold text-slate-900">Claves de API</h3>
@@ -68,6 +82,7 @@ const Settings: React.FC = () => {
                 </div>
               </div>
             </div>
+          </div>
 
             <div className="pt-6 border-t border-slate-50 flex justify-between items-center gap-4">
               <p className="text-xs text-slate-400 leading-relaxed max-w-md">
@@ -78,61 +93,65 @@ const Settings: React.FC = () => {
               </button>
             </div>
           </div>
-
-          {/* Webhooks */}
-          <div className="bg-white p-10 rounded-[40px] border border-slate-100 shadow-sm space-y-8">
-            <div className="flex items-center gap-4">
-              <div className="p-4 bg-blue-50 text-blue-600 rounded-2xl">
-                <Webhook size={24} />
-              </div>
-              <div>
-                <h3 className="text-xl font-bold text-slate-900">Webhooks</h3>
-                <p className="text-sm text-slate-400">Recibe notificaciones en tiempo real en tu servidor.</p>
-              </div>
-            </div>
-
-            <div className="space-y-6">
-              <div className="p-6 bg-slate-50 rounded-3xl border border-slate-100 flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-slate-400 shadow-sm">
-                    <Globe size={20} />
-                  </div>
-                  <div>
-                    <div className="text-sm font-bold text-slate-900">https://api.tu-tienda.com/webhooks/logiperu</div>
-                    <div className="text-[10px] text-emerald-500 font-bold uppercase tracking-widest">Activo</div>
-                  </div>
-                </div>
-                <button className="text-xs font-bold text-slate-400 hover:text-slate-900 transition-colors">Editar</button>
-              </div>
-
-              <button className="w-full py-4 border-2 border-dashed border-slate-200 rounded-2xl text-slate-400 font-bold text-sm hover:bg-slate-50 transition-all flex items-center justify-center gap-2">
-                <PlusIcon size={18} /> Añadir Endpoint
-              </button>
-            </div>
-          </div>
         </div>
 
-        {/* Integration Stats */}
-        <div className="space-y-8">
-          <div className="bg-slate-900 p-10 rounded-[40px] text-white space-y-8 relative overflow-hidden">
-            <div className="absolute -top-10 -right-10 w-40 h-40 bg-emerald-500/20 blur-3xl rounded-full" />
-            
-            <div className="relative z-10">
-              <h4 className="text-lg font-bold mb-6">Estado de Integración</h4>
-              <div className="space-y-6">
-                <div className="flex justify-between items-center">
-                  <div className="flex items-center gap-3">
-                    <Zap size={16} className="text-emerald-400" />
-                    <span className="text-sm text-slate-400">Uptime API</span>
-                  </div>
-                  <span className="text-sm font-bold">99.9%</span>
+        {/* Webhooks */}
+        <div className="bg-white p-10 rounded-[40px] border border-slate-100 shadow-sm space-y-8">
+          <div className="flex items-center gap-4">
+            <div className="p-4 bg-blue-50 text-blue-600 rounded-2xl">
+              <Webhook size={24} />
+            </div>
+            <div>
+              <h3 className="text-xl font-bold text-slate-900">Webhooks</h3>
+              <p className="text-sm text-slate-400">Recibe notificaciones en tiempo real en tu servidor.</p>
+            </div>
+          </div>
+
+          <div className="space-y-6">
+            <div className="p-6 bg-slate-50 rounded-3xl border border-slate-100 flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-slate-400 shadow-sm">
+                  <Globe size={20} />
                 </div>
-                <div className="flex justify-between items-center">
-                  <div className="flex items-center gap-3">
-                    <Smartphone size={16} className="text-blue-400" />
-                    <span className="text-sm text-slate-400">WhatsApp API</span>
+                <div>
+                  <div className="text-sm font-bold text-slate-900">
+                    https://api.tu-tienda.com/webhooks/logiperu
                   </div>
-                  <span className="text-sm font-bold text-emerald-400">Conectado</span>
+                  <div className="text-[10px] text-emerald-500 font-bold uppercase tracking-widest">
+                    Activo
+                  </div>
+                </div>
+              </div>
+              <button className="text-xs font-bold text-slate-400 hover:text-slate-900 transition-colors">
+                Editar
+              </button>
+            </div>
+
+            <button className="w-full py-4 border-2 border-dashed border-slate-200 rounded-2xl text-slate-400 font-bold text-sm hover:bg-slate-50 transition-all flex items-center justify-center gap-2">
+              <PlusCircle size={18} /> Añadir Endpoint
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Right column */}
+      <div className="space-y-8">
+        <div className="bg-slate-900 p-10 rounded-[40px] text-white space-y-8 relative overflow-hidden">
+          <div className="absolute -top-10 -right-10 w-40 h-40 bg-emerald-500/20 blur-3xl rounded-full" />
+          <div className="relative z-10">
+            <h4 className="text-lg font-bold mb-6">Estado de Integración</h4>
+            <div className="space-y-6">
+              <div className="flex justify-between items-center">
+                <div className="flex items-center gap-3">
+                  <Zap size={16} className="text-emerald-400" />
+                  <span className="text-sm text-slate-400">Uptime API</span>
+                </div>
+                <span className="text-sm font-bold">99.9%</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <div className="flex items-center gap-3">
+                  <Smartphone size={16} className="text-blue-400" />
+                  <span className="text-sm text-slate-400">WhatsApp API</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <div className="flex items-center gap-3">
@@ -154,27 +173,20 @@ const Settings: React.FC = () => {
               </div>
             </div>
           </div>
+        </div>
 
-          <div className="bg-emerald-50 p-8 rounded-[40px] border border-emerald-100">
-            <h4 className="text-sm font-bold text-emerald-900 mb-4">¿Necesitas ayuda técnica?</h4>
-            <p className="text-xs text-emerald-700 leading-relaxed mb-6">
-              Nuestra documentación para desarrolladores incluye SDKs para Node.js, Python y PHP.
-            </p>
-            <button className="w-full py-3 bg-emerald-600 text-white rounded-xl text-xs font-bold hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-200">
-              Ver Documentación
-            </button>
-          </div>
+        <div className="bg-emerald-50 p-8 rounded-[40px] border border-emerald-100">
+          <h4 className="text-sm font-bold text-emerald-900 mb-4">¿Necesitas ayuda técnica?</h4>
+          <p className="text-xs text-emerald-700 leading-relaxed mb-6">
+            Nuestra documentación para desarrolladores incluye SDKs para Node.js, Python y PHP.
+          </p>
+          <button className="w-full py-3 bg-emerald-600 text-white rounded-xl text-xs font-bold hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-200">
+            Ver Documentación
+          </button>
         </div>
       </div>
     </div>
-  );
-};
-
-const PlusIcon = ({ size }: { size: number }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-    <line x1="12" y1="5" x2="12" y2="19"></line>
-    <line x1="5" y1="12" x2="19" y2="12"></line>
-  </svg>
+  </div>
 );
 
 export default Settings;

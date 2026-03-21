@@ -23,7 +23,9 @@ async function startServer() {
   const server = createServer(app);
   const PORT = 3000;
 
-  app.use(express.json());
+// ---------------------------------------------------------------------------
+// In-memory state — cargado desde repositorios al arrancar
+// ---------------------------------------------------------------------------
 
   let orders: Order[] = createInitialOrders();
   let drivers: Driver[] = createInitialDrivers();
@@ -283,7 +285,7 @@ async function startServer() {
     });
   }
 
-  server.listen(PORT, "0.0.0.0", () => {
+  server.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running on http://localhost:${PORT}`);
   });
 }
