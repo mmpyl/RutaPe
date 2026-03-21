@@ -54,6 +54,25 @@ const nearestNeighbor = (
 // 2-Opt para refinamiento
 // ---------------------------------------------------------------------------
 
+// Límite de iteraciones del while externo de 2-Opt.
+//
+// Sin límite, 2-Opt es O(n²) por pasada × k pasadas hasta converger.
+// En el peor caso teórico k = O(n²), dando O(n⁴) — con 30 paradas
+// eso son hasta 810 000 evaluaciones de routeDist en un único tick del
+// event loop, bloqueando WebSockets y requests durante cientos de ms.
+//
+// Con MAX_TWO_OPT_PASSES = 20:
+//   - n=10 → ≤ 20 × 45 = 900 evaluaciones    (~0 ms)
+//   - n=20 → ≤ 20 × 190 = 3 800 evaluaciones (~1 ms)
+//   - n=50 → ≤ 20 × 1225 = 24 500 evaluaciones (~8 ms)
+//
+// En la práctica, para rutas de MVP (<15 paradas), el algoritmo converge
+// en 2-5 pasadas y el límite nunca se alcanza. Para rutas más grandes
+// proporciona un techo de tiempo garantizado sin degradar la calidad
+// significativamente (las mejoras más grandes siempre ocurren en las
+// primeras pasadas — ley de rendimientos decrecientes del 2-Opt).
+const MAX_TWO_OPT_PASSES = 20;
+
 const twoOpt = (
   stopIds: string[],
   originLat: number,
@@ -79,9 +98,11 @@ const twoOpt = (
   let best = [...stopIds];
   let bestDist = routeDist(best);
   let improved = true;
+  let passes = 0;
 
-  while (improved) {
+  while (improved && passes < MAX_TWO_OPT_PASSES) {
     improved = false;
+    passes += 1;
     for (let i = 0; i < best.length - 1; i++) {
       for (let k = i + 1; k < best.length; k++) {
         const candidate = [
