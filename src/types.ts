@@ -61,6 +61,11 @@ export interface Route {
   progress: number;
 }
 
+export interface LogisticsSnapshot {
+  orders: Order[];
+  drivers: Driver[];
+  routes: Route[];
+}
 
 export interface RouteOptimizationResponse {
   message: string;

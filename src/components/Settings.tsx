@@ -9,14 +9,40 @@ import {
   Lock,
   ServerCog,
 } from 'lucide-react';
+import { isBrowserDataMode } from '../shared/config/dataMode';
+import { resetBrowserDemoState } from '../shared/demo/store';
 
 const Settings: React.FC = () => {
+  const browserMode = isBrowserDataMode();
+
+  const handleResetDemo = () => {
+    resetBrowserDemoState();
+    window.location.reload();
+  };
+
   return (
     <div className="space-y-10 pb-20">
       <div>
         <h2 className="text-4xl font-black text-slate-900 tracking-tighter">Integración y API</h2>
         <p className="text-slate-500 font-medium mt-1">Conecta tus sistemas externos con LogiPerú de forma segura.</p>
       </div>
+
+      {browserMode && (
+        <div className="rounded-[32px] border border-blue-100 bg-blue-50 p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <div className="text-[10px] font-bold text-blue-700 uppercase tracking-widest mb-2">Modo Netlify / Demo</div>
+            <p className="text-sm text-blue-900 max-w-2xl">
+              Esta versión usa datos persistidos en tu navegador para pruebas funcionales sin backend. Puedes reiniciar el estado cuando quieras.
+            </p>
+          </div>
+          <button
+            onClick={handleResetDemo}
+            className="px-5 py-3 rounded-2xl bg-blue-600 text-white text-sm font-bold hover:bg-blue-700 transition-colors"
+          >
+            Reiniciar datos demo
+          </button>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-6">

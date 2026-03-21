@@ -69,16 +69,30 @@ npm run build
 - El mapa es opcional; sin API key el resto del producto sigue siendo usable.
 
 
-## Mejoras recomendadas (visión especialista)
+## Despliegue en Netlify
 
-Si el objetivo es madurar RutaPe más allá del demo/MVP, priorizaría este orden:
+El proyecto ya incluye configuración para desplegar el frontend en **Netlify** sin depender del servidor Express local.
 
-1. **Persistencia real** para pedidos, conductores, rutas y POD.
-2. **Contratos compartidos runtime** (por ejemplo con esquemas validados) entre frontend y backend.
-3. **Extracción del optimizador de rutas** a un servicio aislado y testeable.
-4. **Auditoría y trazabilidad** de cambios de estado, alertas y entregas.
-5. **Tests de dominio y de integración** para flujos críticos como creación de pedidos, optimización y cierre POD.
-6. **Observabilidad**: logs estructurados, métricas de errores y tiempos de respuesta.
-7. **Seguridad operativa**: secretos por entorno, rate limiting, validación más estricta y endurecimiento de inputs.
+### ¿Cómo funciona en Netlify?
 
-Estas mejoras ofrecen más retorno que abrir nuevos canales de despliegue antes de tener una base operativa más consistente.
+- Netlify compila una versión estática con `VITE_DATA_MODE=browser`.
+- En ese modo, RutaPe usa un dataset demo persistido en `localStorage` del navegador.
+- Las acciones de crear pedido, actualizar estado, optimizar rutas y enviar alertas se simulan del lado cliente para facilitar pruebas funcionales.
+- También se incluye configuración SPA (`netlify.toml` y `_redirects`) para que recargar rutas no rompa la app.
+
+### Pasos de despliegue
+
+1. Conecta este repositorio en Netlify.
+2. Usa estos valores si Netlify no los detecta automáticamente:
+
+```bash
+Build command: npm run build
+Publish directory: dist
+```
+
+3. Despliega.
+
+### Importante
+
+- El deploy en Netlify es ideal para **demos y QA funcional**.
+- El backend Express/WebSocket sigue siendo la opción correcta para desarrollo local o para una futura versión con persistencia real.
