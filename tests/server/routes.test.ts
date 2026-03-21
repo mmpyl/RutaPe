@@ -174,4 +174,42 @@ describe('routesService.optimize', () => {
     // O1 está entregado, debe aparecer primero y no reordenarse
     expect(route?.stops[0]).toBe('O1');
   });
+
+  it('distribuye pedidos entre múltiples conductores disponibles', () => {
+    drivers = [
+      makeDriver({ id: 'D1', status: 'Disponible', lat: -12.0, lng: -77.0 }),
+      makeDriver({ id: 'D2', status: 'Disponible', lat: -12.0, lng: -77.0 }),
+    ];
+
+    makeService().optimize();
+
+    const updatedOrders: Order[] = setOrders.mock.calls[0][0];
+    const assignedToD1 = updatedOrders.filter((o) => o.driverId === 'D1').length;
+    const assignedToD2 = updatedOrders.filter((o) => o.driverId === 'D2').length;
+
+    expect(assignedToD1 + assignedToD2).toBe(3);
+    expect(assignedToD1).toBeGreaterThan(0);
+    expect(assignedToD2).toBeGreaterThan(0);
+  });
+
+  it('penaliza conductores con más carga al asignar nuevos pedidos', () => {
+    orders = [
+      makeOrder('O1', -12.1, -77.0, { status: 'En Ruta', driverId: 'D1' }),
+      makeOrder('O2', -12.2, -77.1, { status: 'En Ruta', driverId: 'D1' }),
+      makeOrder('O3', -12.3, -77.2, { status: 'En Ruta', driverId: 'D1' }),
+      makeOrder('O4', -12.1, -77.0),
+    ];
+    drivers = [
+      makeDriver({ id: 'D1', status: 'En Ruta',    lat: -12.0, lng: -77.0 }),
+      makeDriver({ id: 'D2', status: 'Disponible', lat: -12.0, lng: -77.0 }),
+    ];
+    routes = [{ id: 'R1', driverId: 'D1', stops: ['O1', 'O2', 'O3'], status: 'Activa', progress: 0 }];
+
+    makeService().optimize();
+
+    const updatedOrders: Order[] = setOrders.mock.calls[0][0];
+    const o4 = updatedOrders.find((o) => o.id === 'O4');
+    expect(o4?.driverId).toBe('D2');
+  });
+
 });
