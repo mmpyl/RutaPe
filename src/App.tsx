@@ -37,7 +37,6 @@ const App: React.FC = () => {
     updateOrder,
     sendAlert,
     optimizeRoutes,
-    browserMode,
   } = useApi();
 
   useEffect(() => {
@@ -187,11 +186,6 @@ const App: React.FC = () => {
         <Header />
 
         <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
-          {browserMode && (
-            <div className="mb-6 rounded-2xl border border-blue-100 bg-blue-50 px-5 py-4 text-sm text-blue-900">
-              Estás usando el modo demo para Netlify: los cambios se guardan en tu navegador y no requieren backend ni WebSocket.
-            </div>
-          )}
 
           <AnimatePresence mode="wait">
             <motion.div

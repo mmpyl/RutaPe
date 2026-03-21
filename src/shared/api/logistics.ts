@@ -1,19 +1,13 @@
-import { Driver, LogisticsSnapshot, Order, Route, RouteOptimizationResponse } from '../../types';
-import { isBrowserDataMode } from '../config/dataMode';
-import {
-  createBrowserOrder,
-  fetchBrowserSnapshot,
-  optimizeBrowserRoutesRequest,
-  sendBrowserWhatsappAlert,
-  updateBrowserOrder,
-} from '../demo/store';
+import { Driver, Order, Route, RouteOptimizationResponse } from '../../types';
 import { requestJson } from './http';
 
-export const fetchLogisticsSnapshot = async (): Promise<LogisticsSnapshot> => {
-  if (isBrowserDataMode()) {
-    return fetchBrowserSnapshot();
-  }
+export interface LogisticsSnapshot {
+  orders: Order[];
+  drivers: Driver[];
+  routes: Route[];
+}
 
+export const fetchLogisticsSnapshot = async (): Promise<LogisticsSnapshot> => {
   const [orders, drivers, routes] = await Promise.all([
     requestJson<Order[]>('/api/orders', undefined, 'Failed to fetch orders'),
     requestJson<Driver[]>('/api/drivers', undefined, 'Failed to fetch drivers'),
@@ -23,12 +17,8 @@ export const fetchLogisticsSnapshot = async (): Promise<LogisticsSnapshot> => {
   return { orders, drivers, routes };
 };
 
-export const createOrderRequest = (order: Partial<Order>) => {
-  if (isBrowserDataMode()) {
-    return createBrowserOrder(order);
-  }
-
-  return requestJson<Order>(
+export const createOrderRequest = (order: Partial<Order>) =>
+  requestJson<Order>(
     '/api/orders',
     {
       method: 'POST',
@@ -37,14 +27,9 @@ export const createOrderRequest = (order: Partial<Order>) => {
     },
     'Failed to add order',
   );
-};
 
-export const updateOrderRequest = (id: string, updates: Partial<Order>) => {
-  if (isBrowserDataMode()) {
-    return updateBrowserOrder(id, updates);
-  }
-
-  return requestJson<Order>(
+export const updateOrderRequest = (id: string, updates: Partial<Order>) =>
+  requestJson<Order>(
     `/api/orders/${id}`,
     {
       method: 'PATCH',
@@ -53,14 +38,9 @@ export const updateOrderRequest = (id: string, updates: Partial<Order>) => {
     },
     'Failed to update order',
   );
-};
 
-export const sendWhatsappAlertRequest = (orderId: string) => {
-  if (isBrowserDataMode()) {
-    return sendBrowserWhatsappAlert(orderId);
-  }
-
-  return requestJson<{ success: boolean; message: string }>(
+export const sendWhatsappAlertRequest = (orderId: string) =>
+  requestJson<{ success: boolean; message: string }>(
     '/api/whatsapp/alert',
     {
       method: 'POST',
@@ -69,14 +49,9 @@ export const sendWhatsappAlertRequest = (orderId: string) => {
     },
     'Failed to send alert',
   );
-};
 
-export const optimizeRoutesRequest = () => {
-  if (isBrowserDataMode()) {
-    return optimizeBrowserRoutesRequest();
-  }
-
-  return requestJson<RouteOptimizationResponse>(
+export const optimizeRoutesRequest = () =>
+  requestJson<RouteOptimizationResponse>(
     '/api/routes/optimize',
     {
       method: 'POST',
@@ -84,4 +59,3 @@ export const optimizeRoutesRequest = () => {
     },
     'Failed to optimize routes',
   );
-};

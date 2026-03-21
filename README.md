@@ -64,35 +64,27 @@ npm run build
 
 ## Notas importantes
 
-- Los datos actuales de pedidos, repartidores y rutas viven en memoria dentro de `server.ts`, por lo que se reinician al reiniciar el servidor.
+- El estado operativo ya no vive solo en memoria: el backend persiste pedidos, conductores y rutas en `.rutape-data/logistics-state.json` para reducir retrabajo entre reinicios del servidor.
 - El endpoint de WhatsApp y varias acciones del dashboard siguen siendo simulaciones propias de un MVP.
 - El mapa es opcional; sin API key el resto del producto sigue siendo usable.
 
 
-## Despliegue en Netlify
+## Mejoras recomendadas (visión especialista)
 
-El proyecto ya incluye configuración para desplegar el frontend en **Netlify** sin depender del servidor Express local.
+Si el objetivo es madurar RutaPe más allá del demo/MVP, priorizaría este orden:
 
-### ¿Cómo funciona en Netlify?
+1. **Persistencia real** para pedidos, conductores, rutas y POD.
+2. **Contratos compartidos runtime** (por ejemplo con esquemas validados) entre frontend y backend.
+3. **Extracción del optimizador de rutas** a un servicio aislado y testeable.
+4. **Auditoría y trazabilidad** de cambios de estado, alertas y entregas.
+5. **Tests de dominio y de integración** para flujos críticos como creación de pedidos, optimización y cierre POD.
+6. **Observabilidad**: logs estructurados, métricas de errores y tiempos de respuesta.
+7. **Seguridad operativa**: secretos por entorno, rate limiting, validación más estricta y endurecimiento de inputs.
 
-- Netlify compila una versión estática con `VITE_DATA_MODE=browser`.
-- En ese modo, RutaPe usa un dataset demo persistido en `localStorage` del navegador.
-- Las acciones de crear pedido, actualizar estado, optimizar rutas y enviar alertas se simulan del lado cliente para facilitar pruebas funcionales.
-- También se incluye configuración SPA (`netlify.toml` y `_redirects`) para que recargar rutas no rompa la app.
+Estas mejoras ofrecen más retorno que abrir nuevos canales de despliegue antes de tener una base operativa más consistente.
 
-### Pasos de despliegue
 
-1. Conecta este repositorio en Netlify.
-2. Usa estos valores si Netlify no los detecta automáticamente:
+### Persistencia actual
 
-```bash
-Build command: npm run build
-Publish directory: dist
-```
-
-3. Despliega.
-
-### Importante
-
-- El deploy en Netlify es ideal para **demos y QA funcional**.
-- El backend Express/WebSocket sigue siendo la opción correcta para desarrollo local o para una futura versión con persistencia real.
+- La persistencia implementada es intencionalmente simple: un repositorio en disco basado en JSON para acelerar validación funcional y reducir retrabajo del MVP.
+- El siguiente salto recomendado sigue siendo migrar esta capa a repositorios desacoplados con una base de datos real y storage para POD.

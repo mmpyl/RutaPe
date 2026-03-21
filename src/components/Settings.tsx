@@ -13,13 +13,6 @@ import { isBrowserDataMode } from '../shared/config/dataMode';
 import { resetBrowserDemoState } from '../shared/demo/store';
 
 const Settings: React.FC = () => {
-  const browserMode = isBrowserDataMode();
-
-  const handleResetDemo = () => {
-    resetBrowserDemoState();
-    window.location.reload();
-  };
-
   return (
     <div className="space-y-10 pb-20">
       <div>
@@ -162,6 +155,13 @@ const Settings: React.FC = () => {
                     <span className="text-sm text-slate-400">Uptime API</span>
                   </div>
                   <span className="text-sm font-bold">99.9%</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center gap-3">
+                    <Shield size={16} className="text-emerald-400" />
+                    <span className="text-sm text-slate-400">Exposición de claves</span>
+                  </div>
+                  <span className="text-sm font-bold text-emerald-400">Protegida</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <div className="flex items-center gap-3">

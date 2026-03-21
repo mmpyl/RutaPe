@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Driver, Order, Route, RouteOptimizationResponse } from '../types';
-import { isBrowserDataMode } from '../shared/config/dataMode';
 import {
   createOrderRequest,
   fetchLogisticsSnapshot,
@@ -30,7 +29,6 @@ export const useApi = (): UseApiReturn => {
   const [routes, setRoutes] = useState<Route[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const browserMode = isBrowserDataMode();
 
   const fetchData = useCallback(async () => {
     try {
@@ -49,10 +47,6 @@ export const useApi = (): UseApiReturn => {
 
   useEffect(() => {
     fetchData();
-
-    if (browserMode) {
-      return;
-    }
 
     const socket = connectLogisticsSocket({
       onInit: (data) => {
@@ -76,9 +70,6 @@ export const useApi = (): UseApiReturn => {
   const addOrder = useCallback(async (order: Partial<Order>): Promise<Order> => {
     try {
       const newOrder = await createOrderRequest(order);
-      if (browserMode) {
-        await fetchData();
-      }
       setError(null);
       return newOrder;
     } catch (err) {
@@ -91,9 +82,6 @@ export const useApi = (): UseApiReturn => {
   const updateOrder = useCallback(async (id: string, updates: Partial<Order>): Promise<Order> => {
     try {
       const updatedOrder = await updateOrderRequest(id, updates);
-      if (browserMode) {
-        await fetchData();
-      }
       setError(null);
       return updatedOrder;
     } catch (err) {
@@ -119,9 +107,6 @@ export const useApi = (): UseApiReturn => {
     try {
       setLoading(true);
       const data = await optimizeRoutesRequest();
-      if (browserMode) {
-        await fetchData();
-      }
       setError(null);
       return data;
     } catch (err) {
@@ -145,6 +130,5 @@ export const useApi = (): UseApiReturn => {
     updateOrder,
     sendAlert,
     optimizeRoutes,
-    browserMode,
   };
 };
