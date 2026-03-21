@@ -1,5 +1,15 @@
 export type OrderStatus = 'Pendiente' | 'En Ruta' | 'Entregado' | 'Retrasado' | 'Cancelado';
 
+export interface PodProof {
+  recipientName: string;
+  recipientDocument?: string;
+  notes?: string;
+  signature?: string;
+  photo: string;
+  deliveredAt: string;
+  acknowledgedByDriver: boolean;
+}
+
 export interface Order {
   id: string;
   status: OrderStatus;
@@ -12,6 +22,18 @@ export interface Order {
   carrierLogo?: string;
   items: number;
   value: number;
+  lat?: number;
+  lng?: number;
+  pod?: PodProof;
+}
+
+export interface BulkImportedOrder {
+  client: string;
+  address: string;
+  items: number;
+  value: number;
+  carrier?: string;
+  carrierLogo?: string;
   lat?: number;
   lng?: number;
 }
@@ -37,4 +59,15 @@ export interface Route {
   stops: string[];
   status: 'Activa' | 'Completada' | 'Programada';
   progress: number;
+}
+
+export interface LogisticsSnapshot {
+  orders: Order[];
+  drivers: Driver[];
+  routes: Route[];
+}
+
+export interface RouteOptimizationResponse {
+  message: string;
+  routes: Route[];
 }
