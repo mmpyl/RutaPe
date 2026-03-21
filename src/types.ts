@@ -61,6 +61,7 @@ export interface Route {
   progress: number;
 }
 
+
 export interface RouteOptimizationResponse {
   message: string;
   routes: Route[];

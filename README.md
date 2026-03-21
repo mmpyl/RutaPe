@@ -67,3 +67,18 @@ npm run build
 - Los datos actuales de pedidos, repartidores y rutas viven en memoria dentro de `server.ts`, por lo que se reinician al reiniciar el servidor.
 - El endpoint de WhatsApp y varias acciones del dashboard siguen siendo simulaciones propias de un MVP.
 - El mapa es opcional; sin API key el resto del producto sigue siendo usable.
+
+
+## Mejoras recomendadas (visión especialista)
+
+Si el objetivo es madurar RutaPe más allá del demo/MVP, priorizaría este orden:
+
+1. **Persistencia real** para pedidos, conductores, rutas y POD.
+2. **Contratos compartidos runtime** (por ejemplo con esquemas validados) entre frontend y backend.
+3. **Extracción del optimizador de rutas** a un servicio aislado y testeable.
+4. **Auditoría y trazabilidad** de cambios de estado, alertas y entregas.
+5. **Tests de dominio y de integración** para flujos críticos como creación de pedidos, optimización y cierre POD.
+6. **Observabilidad**: logs estructurados, métricas de errores y tiempos de respuesta.
+7. **Seguridad operativa**: secretos por entorno, rate limiting, validación más estricta y endurecimiento de inputs.
+
+Estas mejoras ofrecen más retorno que abrir nuevos canales de despliegue antes de tener una base operativa más consistente.

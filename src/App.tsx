@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Wifi, WifiOff } from 'lucide-react';
 import { useApi } from './hooks/useApi';
@@ -12,8 +12,7 @@ import Settings from './components/Settings';
 import LandingPage from './components/LandingPage';
 import NewOrderModal from './components/Modals/NewOrderModal';
 import PodModal from './components/Modals/PodModal';
-import { Order, PodProof } from './types';
-import { BulkOrderRow } from './shared/contracts/bulkImport';
+import { BulkImportedOrder, Order, PodProof } from './types';
 
 const App: React.FC = () => {
   const [view, setView] = useState<'plan' | 'demo'>('plan');
@@ -26,6 +25,7 @@ const App: React.FC = () => {
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [trackedOrderId, setTrackedOrderId] = useState<string | null>(null);
   const [isMapVisible, setIsMapVisible] = useState(false);
+  const toastTimeoutRef = useRef<number | null>(null);
 
   const {
     orders,
@@ -33,7 +33,6 @@ const App: React.FC = () => {
     routes,
     loading,
     error,
-    wsStatus,
     addOrder,
     updateOrder,
     sendAlert,
@@ -44,9 +43,18 @@ const App: React.FC = () => {
     document.body.style.overflow = view === 'demo' ? 'hidden' : 'auto';
   }, [view]);
 
+  useEffect(() => () => {
+    if (toastTimeoutRef.current) {
+      window.clearTimeout(toastTimeoutRef.current);
+    }
+  }, []);
+
   const showToast = (message: string, type: 'success' | 'error' = 'success') => {
     setToast({ message, type });
-    setTimeout(() => setToast(null), 3000);
+    if (toastTimeoutRef.current) {
+      window.clearTimeout(toastTimeoutRef.current);
+    }
+    toastTimeoutRef.current = window.setTimeout(() => setToast(null), 3000);
   };
 
   const handleAddOrder = async (orderData: Partial<Order>) => {
@@ -59,10 +67,15 @@ const App: React.FC = () => {
     }
   };
 
-  const handleBulkImport = async (newOrders: BulkOrderRow[]) => {
+  const handleBulkImport = async (newOrders: BulkImportedOrder[]) => {
     try {
       for (const order of newOrders) {
-        await addOrder({ ...order, status: 'Pendiente', time: 'Ahora', color: 'bg-slate-100 text-slate-700' });
+        await addOrder({
+          ...order,
+          status: 'Pendiente',
+          time: 'Ahora',
+          color: 'bg-slate-100 text-slate-700',
+        });
       }
       showToast(`${newOrders.length} pedidos importados con éxito`);
     } catch {
@@ -80,18 +93,19 @@ const App: React.FC = () => {
   };
 
   const handlePodSubmit = async (data: PodProof) => {
-    if (!podModal.orderId) return;
-    try {
-      await updateOrder(podModal.orderId, {
-        status: 'Entregado',
-        color: 'bg-emerald-100 text-emerald-700',
-        time: 'Ahora',
-        pod: data,
-      });
-      setPodModal({ isOpen: false, orderId: null });
-      showToast(`Entrega confirmada con evidencia para ${data.recipientName}`);
-    } catch {
-      showToast('Error al confirmar entrega', 'error');
+    if (podModal.orderId) {
+      try {
+        await updateOrder(podModal.orderId, {
+          status: 'Entregado',
+          color: 'bg-emerald-100 text-emerald-700',
+          time: 'Ahora',
+          pod: data,
+        });
+        setPodModal({ isOpen: false, orderId: null });
+        showToast(`Entrega confirmada con evidencia para ${data.recipientName}`);
+      } catch {
+        showToast('Error al confirmar entrega', 'error');
+      }
     }
   };
 
@@ -122,7 +136,7 @@ const App: React.FC = () => {
             onNewOrder={() => setIsNewOrderModalOpen(true)}
             onSendAlert={handleSendAlert}
             onViewDetail={(id) => {
-              const order = orders.find((o) => o.id === id);
+              const order = orders.find((currentOrder) => currentOrder.id === id);
               if (order?.status === 'En Ruta') {
                 setPodModal({ isOpen: true, orderId: id });
               } else {
@@ -171,34 +185,8 @@ const App: React.FC = () => {
       <main className="flex-1 flex flex-col overflow-hidden">
         <Header />
 
-        {/* WS reconnecting banner */}
-        <AnimatePresence>
-          {wsStatus === 'reconnecting' && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              className="bg-amber-50 border-b border-amber-100 px-8 py-2 flex items-center gap-2 text-amber-700 text-xs font-bold overflow-hidden"
-            >
-              <WifiOff size={14} />
-              Conexión en tiempo real interrumpida. Reconectando...
-            </motion.div>
-          )}
-          {wsStatus === 'connected' && orders.length > 0 && (
-            <motion.div
-              key="connected"
-              initial={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ delay: 1.5 }}
-              className="bg-emerald-50 border-b border-emerald-100 px-8 py-2 flex items-center gap-2 text-emerald-700 text-xs font-bold overflow-hidden"
-            >
-              <Wifi size={14} />
-              Conectado en tiempo real
-            </motion.div>
-          )}
-        </AnimatePresence>
-
         <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
+
           <AnimatePresence mode="wait">
             <motion.div
               key={activeTab}
@@ -213,11 +201,7 @@ const App: React.FC = () => {
         </div>
       </main>
 
-      <NewOrderModal
-        isOpen={isNewOrderModalOpen}
-        onClose={() => setIsNewOrderModalOpen(false)}
-        onSubmit={handleAddOrder}
-      />
+      <NewOrderModal isOpen={isNewOrderModalOpen} onClose={() => setIsNewOrderModalOpen(false)} onSubmit={handleAddOrder} />
 
       <PodModal
         isOpen={podModal.isOpen}
@@ -226,7 +210,6 @@ const App: React.FC = () => {
         onSubmit={handlePodSubmit}
       />
 
-      {/* Toast */}
       <AnimatePresence>
         {toast && (
           <motion.div
@@ -247,11 +230,10 @@ const App: React.FC = () => {
         )}
       </AnimatePresence>
 
-      {/* Error banner (errores de API, no de WS) */}
-      {error && wsStatus !== 'reconnecting' && (
-        <div className="fixed top-4 right-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded z-[3000]">
-          <strong className="font-bold">Error: </strong>
-          <span>{error}</span>
+      {error && (
+        <div className="fixed top-8 right-8 bg-red-600 text-white px-6 py-4 rounded-2xl shadow-2xl z-[2000] max-w-md">
+          <div className="font-bold text-sm mb-1">Error de conexión</div>
+          <div className="text-xs text-red-100">{error}</div>
         </div>
       )}
     </div>

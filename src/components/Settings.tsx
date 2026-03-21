@@ -1,13 +1,13 @@
 import React from 'react';
-import { 
-  Key, 
-  Webhook, 
-  Globe, 
-  Shield, 
+import {
+  Key,
+  Webhook,
+  Globe,
+  Shield,
   Zap,
   Smartphone,
   Lock,
-  ServerCog
+  ServerCog,
 } from 'lucide-react';
 
 const Settings: React.FC = () => {
@@ -18,27 +18,12 @@ const Settings: React.FC = () => {
         <p className="text-slate-500 font-medium mt-1">Conecta tus sistemas externos con LogiPerú de forma segura.</p>
       </div>
 
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-      {/* Left column */}
-      <div className="lg:col-span-2 space-y-6">
-        {/* API Keys */}
-        <div className="bg-white p-10 rounded-[40px] border border-slate-100 shadow-sm space-y-8">
-          <div className="flex items-center gap-4">
-            <div className="p-4 bg-emerald-50 text-emerald-600 rounded-2xl">
-              <Key size={24} />
-            </div>
-            <div>
-              <h3 className="text-xl font-bold text-slate-900">Claves de API</h3>
-              <p className="text-sm text-slate-400">
-                Las credenciales sensibles se gestionan fuera del cliente para evitar exposiciones.
-              </p>
-            </div>
-          </div>
-
-          <div className="rounded-[32px] border border-emerald-100 bg-emerald-50 p-6 space-y-4">
-            <div className="flex items-start gap-4">
-              <div className="p-3 bg-white text-emerald-600 rounded-2xl shadow-sm border border-emerald-100">
-                <Lock size={20} />
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="lg:col-span-2 space-y-6">
+          <div className="bg-white p-10 rounded-[40px] border border-slate-100 shadow-sm space-y-8">
+            <div className="flex items-center gap-4">
+              <div className="p-4 bg-emerald-50 text-emerald-600 rounded-2xl">
+                <Key size={24} />
               </div>
               <div>
                 <h3 className="text-xl font-bold text-slate-900">Claves de API</h3>
@@ -95,11 +80,15 @@ const Settings: React.FC = () => {
           </div>
         </div>
 
-        {/* Webhooks */}
-        <div className="bg-white p-10 rounded-[40px] border border-slate-100 shadow-sm space-y-8">
-          <div className="flex items-center gap-4">
-            <div className="p-4 bg-blue-50 text-blue-600 rounded-2xl">
-              <Webhook size={24} />
+          <div className="bg-white p-10 rounded-[40px] border border-slate-100 shadow-sm space-y-8">
+            <div className="flex items-center gap-4">
+              <div className="p-4 bg-blue-50 text-blue-600 rounded-2xl">
+                <Webhook size={24} />
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-slate-900">Webhooks</h3>
+                <p className="text-sm text-slate-400">Recibe notificaciones en tiempo real en tu servidor.</p>
+              </div>
             </div>
             <div>
               <h3 className="text-xl font-bold text-slate-900">Webhooks</h3>
@@ -134,24 +123,26 @@ const Settings: React.FC = () => {
         </div>
       </div>
 
-      {/* Right column */}
-      <div className="space-y-8">
-        <div className="bg-slate-900 p-10 rounded-[40px] text-white space-y-8 relative overflow-hidden">
-          <div className="absolute -top-10 -right-10 w-40 h-40 bg-emerald-500/20 blur-3xl rounded-full" />
-          <div className="relative z-10">
-            <h4 className="text-lg font-bold mb-6">Estado de Integración</h4>
-            <div className="space-y-6">
-              <div className="flex justify-between items-center">
-                <div className="flex items-center gap-3">
-                  <Zap size={16} className="text-emerald-400" />
-                  <span className="text-sm text-slate-400">Uptime API</span>
+        <div className="space-y-8">
+          <div className="bg-slate-900 p-10 rounded-[40px] text-white space-y-8 relative overflow-hidden">
+            <div className="absolute -top-10 -right-10 w-40 h-40 bg-emerald-500/20 blur-3xl rounded-full" />
+
+            <div className="relative z-10">
+              <h4 className="text-lg font-bold mb-6">Estado de Integración</h4>
+              <div className="space-y-6">
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center gap-3">
+                    <Zap size={16} className="text-emerald-400" />
+                    <span className="text-sm text-slate-400">Uptime API</span>
+                  </div>
+                  <span className="text-sm font-bold">99.9%</span>
                 </div>
-                <span className="text-sm font-bold">99.9%</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <div className="flex items-center gap-3">
-                  <Smartphone size={16} className="text-blue-400" />
-                  <span className="text-sm text-slate-400">WhatsApp API</span>
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center gap-3">
+                    <Shield size={16} className="text-emerald-400" />
+                    <span className="text-sm text-slate-400">Exposición de claves</span>
+                  </div>
+                  <span className="text-sm font-bold text-emerald-400">Protegida</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <div className="flex items-center gap-3">
