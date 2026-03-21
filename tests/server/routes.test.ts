@@ -51,6 +51,52 @@ describe('routesService.list', () => {
     );
     expect(service.list()).toEqual(routes);
   });
+  it('completa en tiempo acotado con ruta de 25 paradas (límite de pasadas)', () => {
+    // Con 25 paradas y sin límite, 2-Opt podría iterar cientos de pasadas.
+    // Con MAX_TWO_OPT_PASSES=20 el bucle externo se detiene y el resultado
+    // es una permutación válida de los stops originales.
+    orders = Array.from({ length: 25 }, (_, i) => {
+      // Disposición en zigzag deliberado para que 2-Opt quiera mejorar
+      const lat = -12.0 - (i % 5) * 0.1 * (i % 2 === 0 ? 1 : -1);
+      const lng = -77.0 - Math.floor(i / 5) * 0.1;
+      return makeOrder(`O${i + 1}`, lat, lng);
+    });
+    drivers = [makeDriver({ id: 'D1', status: 'Disponible', lat: -12.0, lng: -77.0 })];
+    routes = [];
+
+    const start = Date.now();
+    makeService().optimize();
+    const elapsed = Date.now() - start;
+
+    // El resultado debe ser una permutación completa de los 25 pedidos
+    const updatedRoutes: Route[] = setRoutes.mock.calls[0][0];
+    const stops = updatedRoutes[0]?.stops ?? [];
+    expect(stops.length).toBe(25);
+    expect([...stops].sort()).toEqual(orders.map((o) => o.id).sort());
+
+    // En un entorno de test debe terminar en menos de 500ms incluso en CI lento
+    expect(elapsed).toBeLessThan(500);
+  });
+
+  it('converge naturalmente con pocas paradas sin alcanzar el límite', () => {
+    // 3 paradas en línea recta — nearest-neighbor ya da la solución óptima,
+    // 2-Opt no encuentra ninguna mejora y sale en la primera pasada.
+    orders = [
+      makeOrder('A', -12.1, -77.0),
+      makeOrder('B', -12.2, -77.0),
+      makeOrder('C', -12.3, -77.0),
+    ];
+    drivers = [makeDriver({ id: 'D1', status: 'Disponible', lat: -12.0, lng: -77.0 })];
+    routes = [];
+
+    const result = makeService().optimize();
+    expect(result.ok).toBe(true);
+
+    const updatedRoutes: Route[] = setRoutes.mock.calls[0][0];
+    // El orden óptimo es A→B→C (descendente en lat desde el origen)
+    expect(updatedRoutes[0]?.stops).toEqual(['A', 'B', 'C']);
+  });
+
 });
 
 // ---------------------------------------------------------------------------
