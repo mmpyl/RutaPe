@@ -21,8 +21,10 @@ export type OrderServiceResponse<T> = OrderServiceResult<T> | OrderServiceError;
 
 const makeError = (status: number, error: string): OrderServiceError => ({ ok: false, status, error });
 
-const generateOrderId = (): string =>
-  (Math.floor(Math.random() * 1000) + 4100).toString();
+// crypto.randomUUID() está disponible en Node.js >= 19 sin importaciones.
+// Genera un UUID v4 criptográficamente seguro, eliminando el riesgo de
+// colisión que existía con el rango anterior de solo 1000 valores posibles.
+const generateOrderId = (): string => crypto.randomUUID();
 
 export const createOrdersService = (
   getOrders: () => Order[],
