@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { Driver, Order, Route } from '../types';
+import { useCallback, useEffect, useState } from 'react';
+import { Driver, Order, Route, RouteOptimizationResponse } from '../types';
 import {
   createOrderRequest,
   fetchLogisticsSnapshot,
@@ -7,7 +7,7 @@ import {
   sendWhatsappAlertRequest,
   updateOrderRequest,
 } from '../shared/api/logistics';
-import { connectLogisticsSocket, LogisticsSocket } from '../shared/realtime/socket';
+import { connectLogisticsSocket } from '../shared/realtime/socket';
 
 export interface UseApiReturn {
   orders: Order[];
@@ -29,9 +29,6 @@ export const useApi = (): UseApiReturn => {
   const [routes, setRoutes] = useState<Route[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [wsStatus, setWsStatus] = useState<'connecting' | 'connected' | 'reconnecting'>('connecting');
-
-  const socketRef = useRef<LogisticsSocket | null>(null);
 
   const fetchData = useCallback(async () => {
     try {
@@ -60,20 +57,10 @@ export const useApi = (): UseApiReturn => {
       onDriverUpdate: setDrivers,
       onOrderUpdate: setOrders,
       onRouteUpdate: setRoutes,
-      onConnected: () => {
-        setWsStatus('connected');
-        setError(null);
-      },
-      onReconnecting: (attempt) => {
-        setWsStatus('reconnecting');
-        setError(`Conexión perdida. Reintentando... (intento ${attempt})`);
-      },
       onError: (err) => {
-        console.error('[WS] Error:', err);
+        console.error('WebSocket error:', err);
       },
     });
-
-    socketRef.current = socket;
 
     return () => {
       socket.close();
@@ -82,7 +69,9 @@ export const useApi = (): UseApiReturn => {
 
   const addOrder = useCallback(async (order: Partial<Order>): Promise<Order> => {
     try {
-      return await createOrderRequest(order);
+      const newOrder = await createOrderRequest(order);
+      setError(null);
+      return newOrder;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Error al crear pedido';
       setError(message);
@@ -92,7 +81,9 @@ export const useApi = (): UseApiReturn => {
 
   const updateOrder = useCallback(async (id: string, updates: Partial<Order>): Promise<Order> => {
     try {
-      return await updateOrderRequest(id, updates);
+      const updatedOrder = await updateOrderRequest(id, updates);
+      setError(null);
+      return updatedOrder;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Error al actualizar pedido';
       setError(message);
@@ -102,7 +93,9 @@ export const useApi = (): UseApiReturn => {
 
   const sendAlert = useCallback(async (orderId: string) => {
     try {
-      return await sendWhatsappAlertRequest(orderId);
+      const response = await sendWhatsappAlertRequest(orderId);
+      setError(null);
+      return response;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Error al enviar alerta';
       setError(message);
@@ -110,10 +103,12 @@ export const useApi = (): UseApiReturn => {
     }
   }, []);
 
-  const optimizeRoutes = useCallback(async () => {
+  const optimizeRoutes = async (): Promise<RouteOptimizationResponse> => {
     try {
       setLoading(true);
-      return await optimizeRoutesRequest();
+      const data = await optimizeRoutesRequest();
+      setError(null);
+      return data;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Error al optimizar rutas';
       setError(message);

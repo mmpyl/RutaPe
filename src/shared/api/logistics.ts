@@ -1,13 +1,5 @@
-import { Driver, Order, Route } from '../../types';
+import { Driver, Order, Route, RouteOptimizationResponse } from '../../types';
 import { requestJson } from './http';
-import {
-  isOrder,
-  isOrderArray,
-  isDriverArray,
-  isRouteArray,
-  isWhatsAppAlertResponse,
-  WhatsAppAlertResponse,
-} from '../contracts/guards';
 
 export interface LogisticsSnapshot {
   orders: Order[];
@@ -17,15 +9,15 @@ export interface LogisticsSnapshot {
 
 export const fetchLogisticsSnapshot = async (): Promise<LogisticsSnapshot> => {
   const [orders, drivers, routes] = await Promise.all([
-    requestJson<Order[]>('/api/orders', undefined, 'Error al cargar pedidos', isOrderArray),
-    requestJson<Driver[]>('/api/drivers', undefined, 'Error al cargar conductores', isDriverArray),
-    requestJson<Route[]>('/api/routes', undefined, 'Error al cargar rutas', isRouteArray),
+    requestJson<Order[]>('/api/orders', undefined, 'Failed to fetch orders'),
+    requestJson<Driver[]>('/api/drivers', undefined, 'Failed to fetch drivers'),
+    requestJson<Route[]>('/api/routes', undefined, 'Failed to fetch routes'),
   ]);
 
   return { orders, drivers, routes };
 };
 
-export const createOrderRequest = (order: Partial<Order>): Promise<Order> =>
+export const createOrderRequest = (order: Partial<Order>) =>
   requestJson<Order>(
     '/api/orders',
     {
@@ -33,11 +25,10 @@ export const createOrderRequest = (order: Partial<Order>): Promise<Order> =>
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(order),
     },
-    'Error al crear pedido',
-    isOrder,
+    'Failed to add order',
   );
 
-export const updateOrderRequest = (id: string, updates: Partial<Order>): Promise<Order> =>
+export const updateOrderRequest = (id: string, updates: Partial<Order>) =>
   requestJson<Order>(
     `/api/orders/${id}`,
     {
@@ -45,39 +36,26 @@ export const updateOrderRequest = (id: string, updates: Partial<Order>): Promise
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(updates),
     },
-    'Error al actualizar pedido',
-    isOrder,
+    'Failed to update order',
   );
 
-export const sendWhatsappAlertRequest = (
-  orderId: string,
-): Promise<WhatsAppAlertResponse> =>
-  requestJson(
+export const sendWhatsappAlertRequest = (orderId: string) =>
+  requestJson<{ success: boolean; message: string }>(
     '/api/whatsapp/alert',
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ orderId }),
     },
-    'Error al enviar alerta',
-    isWhatsAppAlertResponse,
+    'Failed to send alert',
   );
 
-const isOptimizeResponse = (
-  v: unknown,
-): v is { message: string; routes: Route[] } => {
-  if (typeof v !== 'object' || v === null) return false;
-  const obj = v as Record<string, unknown>;
-  return typeof obj.message === 'string' && isRouteArray(obj.routes);
-};
-
-export const optimizeRoutesRequest = (): Promise<{ message: string; routes: Route[] }> =>
-  requestJson(
+export const optimizeRoutesRequest = () =>
+  requestJson<RouteOptimizationResponse>(
     '/api/routes/optimize',
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
     },
-    'Error al optimizar rutas',
-    isOptimizeResponse,
+    'Failed to optimize routes',
   );

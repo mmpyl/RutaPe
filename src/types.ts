@@ -27,6 +27,17 @@ export interface Order {
   pod?: PodProof;
 }
 
+export interface BulkImportedOrder {
+  client: string;
+  address: string;
+  items: number;
+  value: number;
+  carrier?: string;
+  carrierLogo?: string;
+  lat?: number;
+  lng?: number;
+}
+
 export interface Driver {
   id: string;
   name: string;
@@ -48,4 +59,9 @@ export interface Route {
   stops: string[];
   status: 'Activa' | 'Completada' | 'Programada';
   progress: number;
+}
+
+export interface RouteOptimizationResponse {
+  message: string;
+  routes: Route[];
 }

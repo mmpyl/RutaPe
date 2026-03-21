@@ -1,18 +1,18 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Upload, CheckCircle2, AlertCircle, FileImage } from 'lucide-react';
-import { BulkOrderRow } from '../../shared/contracts/bulkImport';
+import { X, Upload, CheckCircle2, AlertCircle } from 'lucide-react';
+import { BulkImportedOrder } from '../../types';
 
 interface BulkImportModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onImport: (orders: BulkOrderRow[]) => void;
+  onImport: (orders: BulkImportedOrder[]) => void;
 }
 
-const MOCK_PARSED_ORDERS: BulkOrderRow[] = [
-  { client: 'Tienda Ripley S.A.', address: 'Av. Javier Prado 450, San Isidro', items: 3, value: 450.50 },
-  { client: 'Saga Falabella', address: 'Calle Las Begonias 12, San Isidro', items: 1, value: 120.00 },
-  { client: 'Mercado Libre Perú', address: 'Av. El Derby 250, Santiago de Surco', items: 5, value: 890.00 },
+const MOCK_PARSED_ORDERS: BulkImportedOrder[] = [
+  { client: 'Tienda Ripley S.A.', address: 'Av. Javier Prado 450, San Isidro', items: 3, value: 450.5 },
+  { client: 'Saga Falabella', address: 'Calle Las Begonias 12, San Isidro', items: 1, value: 120 },
+  { client: 'Mercado Libre Perú', address: 'Av. El Derby 250, Santiago de Surco', items: 5, value: 890 },
 ];
 
 const BulkImportModal: React.FC<BulkImportModalProps> = ({ isOpen, onClose, onImport }) => {
@@ -21,8 +21,8 @@ const BulkImportModal: React.FC<BulkImportModalProps> = ({ isOpen, onClose, onIm
 
   if (!isOpen) return null;
 
-  const handleFileDrop = (e: React.DragEvent) => {
-    e.preventDefault();
+  const handleFileDrop = (event: React.DragEvent) => {
+    event.preventDefault();
     setIsDragging(false);
     // En producción: parsear e.dataTransfer.files[0] con SheetJS/PapaParse
     setStep('preview');
@@ -60,7 +60,10 @@ const BulkImportModal: React.FC<BulkImportModalProps> = ({ isOpen, onClose, onIm
             {step === 'upload' ? (
               <div className="space-y-8">
                 <div
-                  onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+                  onDragOver={(event) => {
+                    event.preventDefault();
+                    setIsDragging(true);
+                  }}
                   onDragLeave={() => setIsDragging(false)}
                   onDrop={handleFileDrop}
                   className={`w-full py-20 border-2 border-dashed rounded-[40px] flex flex-col items-center justify-center gap-4 transition-all cursor-pointer ${
@@ -108,9 +111,7 @@ const BulkImportModal: React.FC<BulkImportModalProps> = ({ isOpen, onClose, onIm
             ) : (
               <div className="space-y-8">
                 <div className="space-y-4">
-                  <div className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">
-                    Vista Previa ({MOCK_PARSED_ORDERS.length} pedidos detectados)
-                  </div>
+                  <div className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">Vista Previa ({MOCK_PARSED_ORDERS.length} pedidos detectados)</div>
                   <div className="bg-slate-50 rounded-3xl overflow-hidden border border-slate-100">
                     <table className="w-full text-left text-xs">
                       <thead className="bg-slate-100 text-slate-500 font-bold uppercase tracking-widest">
@@ -122,8 +123,8 @@ const BulkImportModal: React.FC<BulkImportModalProps> = ({ isOpen, onClose, onIm
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
-                        {MOCK_PARSED_ORDERS.map((order, i) => (
-                          <tr key={i} className="text-slate-600">
+                        {MOCK_PARSED_ORDERS.map((order, index) => (
+                          <tr key={`${order.client}-${index}`} className="text-slate-600">
                             <td className="px-6 py-4 font-bold">{order.client}</td>
                             <td className="px-6 py-4">{order.address}</td>
                             <td className="px-6 py-4">{order.items}</td>

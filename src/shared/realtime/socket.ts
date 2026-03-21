@@ -1,9 +1,4 @@
 import { Driver, Order, Route } from '../../types';
-import { parseWsMessage } from '../contracts/guards';
-
-// ---------------------------------------------------------------------------
-// Tipos públicos
-// ---------------------------------------------------------------------------
 
 interface InitPayload {
   orders: Order[];
@@ -11,63 +6,44 @@ interface InitPayload {
   routes: Route[];
 }
 
-export interface LogisticsSocketHandlers {
+type LogisticsSocketMessage =
+  | { type: 'INIT'; data: InitPayload }
+  | { type: 'DRIVER_UPDATE'; data: Driver[] }
+  | { type: 'ORDER_UPDATE'; data: Order[] }
+  | { type: 'ROUTE_UPDATE'; data: Route[] };
+
+interface LogisticsSocketHandlers {
   onInit: (data: InitPayload) => void;
   onDriverUpdate: (data: Driver[]) => void;
   onOrderUpdate: (data: Order[]) => void;
   onRouteUpdate: (data: Route[]) => void;
-  onError?: (error: Event) => void;
-  onReconnecting?: (attempt: number) => void;
-  onConnected?: () => void;
+  onError?: (error: Event | Error) => void;
 }
 
-export interface LogisticsSocket {
-  close: () => void;
-}
-
-// ---------------------------------------------------------------------------
-// Config de reconexión
-// ---------------------------------------------------------------------------
-
-const RECONNECT_BASE_MS = 1_000;
-const RECONNECT_MAX_MS = 30_000;
-const RECONNECT_FACTOR = 2;
-
-const backoff = (attempt: number): number =>
-  Math.min(RECONNECT_BASE_MS * RECONNECT_FACTOR ** attempt, RECONNECT_MAX_MS);
-
-// ---------------------------------------------------------------------------
-// URL helper
-// ---------------------------------------------------------------------------
-
-const getSocketUrl = (): string => {
+const getSocketUrl = () => {
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
   return `${protocol}//${window.location.host}`;
 };
 
-// ---------------------------------------------------------------------------
-// Factory con reconexión automática
-// ---------------------------------------------------------------------------
+const isSocketMessage = (value: unknown): value is LogisticsSocketMessage => {
+  if (typeof value !== 'object' || value === null || !('type' in value)) {
+    return false;
+  }
 
-export const connectLogisticsSocket = (handlers: LogisticsSocketHandlers): LogisticsSocket => {
-  let socket: WebSocket | null = null;
-  let attempt = 0;
-  let destroyed = false;
-  let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  const message = value as { type?: unknown };
+  return typeof message.type === 'string';
+};
 
-  const connect = () => {
-    if (destroyed) return;
+export const connectLogisticsSocket = (handlers: LogisticsSocketHandlers) => {
+  const socket = new WebSocket(getSocketUrl());
 
-    socket = new WebSocket(getSocketUrl());
+  socket.onmessage = (event) => {
+    try {
+      const message = JSON.parse(event.data) as unknown;
 
-    socket.onopen = () => {
-      attempt = 0;
-      handlers.onConnected?.();
-    };
-
-    socket.onmessage = (event: MessageEvent<string>) => {
-      const message = parseWsMessage(event.data);
-      if (!message) return;
+      if (!isSocketMessage(message)) {
+        throw new Error('Unexpected socket payload');
+      }
 
       switch (message.type) {
         case 'INIT':
@@ -82,32 +58,17 @@ export const connectLogisticsSocket = (handlers: LogisticsSocketHandlers): Logis
         case 'ROUTE_UPDATE':
           handlers.onRouteUpdate(message.data);
           break;
+        default:
+          break;
       }
-    };
-
-    socket.onerror = (event: Event) => {
-      handlers.onError?.(event);
-    };
-
-    socket.onclose = () => {
-      if (destroyed) return;
-
-      const delay = backoff(attempt);
-      attempt += 1;
-      handlers.onReconnecting?.(attempt);
-
-      console.warn(`[WS] Desconectado. Reintentando en ${delay}ms (intento ${attempt})...`);
-      reconnectTimer = setTimeout(connect, delay);
-    };
+    } catch (error) {
+      handlers.onError?.(error instanceof Error ? error : new Error('WebSocket parse error'));
+    }
   };
 
-  connect();
+  if (handlers.onError) {
+    socket.onerror = handlers.onError;
+  }
 
-  return {
-    close: () => {
-      destroyed = true;
-      if (reconnectTimer !== null) clearTimeout(reconnectTimer);
-      socket?.close();
-    },
-  };
+  return socket;
 };

@@ -7,6 +7,8 @@ const CARRIER_COLORS: Record<string, string> = {
   'Flota Propia': '#6366f1',
 };
 
+const WEEKDAY_LABELS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+
 const parseRelativeTimeToMinutes = (timeLabel: string) => {
   const normalized = timeLabel.trim().toLowerCase();
 
@@ -19,6 +21,28 @@ const parseRelativeTimeToMinutes = (timeLabel: string) => {
   const unit = match[2];
 
   return unit === 'hr' ? value * 60 : value;
+};
+
+const startOfDay = (value: Date) => {
+  const next = new Date(value);
+  next.setHours(0, 0, 0, 0);
+  return next;
+};
+
+const isoKey = (date: Date) => startOfDay(date).toISOString().slice(0, 10);
+
+const getRecentOrderDate = (order: Order, referenceDate: Date) => {
+  if (order.pod?.deliveredAt) {
+    const podDate = new Date(order.pod.deliveredAt);
+    if (!Number.isNaN(podDate.getTime())) {
+      return podDate;
+    }
+  }
+
+  const relativeMinutes = parseRelativeTimeToMinutes(order.time);
+  const fallback = new Date(referenceDate);
+  fallback.setMinutes(fallback.getMinutes() - relativeMinutes);
+  return fallback;
 };
 
 export interface DashboardStats {
@@ -41,12 +65,64 @@ export interface CarrierMetric {
   avgCost: number;
 }
 
+export interface WeeklyPerformancePoint {
+  name: string;
+  entregas: number;
+  incidencias: number;
+}
+
 export const getDashboardStats = (orders: Order[]): DashboardStats => ({
   entregados: orders.filter((order) => order.status === 'Entregado').length,
   enRuta: orders.filter((order) => order.status === 'En Ruta').length,
   pendientes: orders.filter((order) => order.status === 'Pendiente').length,
   incidencias: orders.filter((order) => order.status === 'Retrasado').length,
 });
+
+export const getDashboardDateLabel = (referenceDate = new Date()) =>
+  new Intl.DateTimeFormat('es-PE', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  }).format(referenceDate);
+
+export const getWeeklyPerformanceData = (
+  orders: Order[],
+  referenceDate = new Date(),
+): WeeklyPerformancePoint[] => {
+  const today = startOfDay(referenceDate);
+  const series = Array.from({ length: 7 }, (_, index) => {
+    const date = new Date(today);
+    date.setDate(today.getDate() - (6 - index));
+
+    return {
+      name: WEEKDAY_LABELS[date.getDay()],
+      key: isoKey(date),
+      entregas: 0,
+      incidencias: 0,
+    };
+  });
+
+  const seriesByDay = new Map(series.map((entry) => [entry.key, entry]));
+
+  orders.forEach((order) => {
+    const date = getRecentOrderDate(order, referenceDate);
+    const bucket = seriesByDay.get(isoKey(date));
+    if (!bucket) {
+      return;
+    }
+
+    if (order.status === 'Entregado') {
+      bucket.entregas += 1;
+    }
+
+    if (order.status === 'Retrasado' || order.status === 'Cancelado') {
+      bucket.incidencias += 1;
+    }
+  });
+
+  return series.map(({ key, ...entry }) => entry);
+};
 
 export const getCarrierPerformance = (orders: Order[]): CarrierMetric[] => {
   const grouped: Record<string, Order[]> = {};

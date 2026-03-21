@@ -18,6 +18,12 @@ const isNonEmptyString = (value: unknown) =>
 const isFiniteNumber = (value: unknown) =>
   typeof value === 'number' && Number.isFinite(value);
 
+const isIsoDateString = (value: unknown) => {
+  if (typeof value !== 'string' || value.trim().length === 0) return false;
+  const parsed = new Date(value);
+  return !Number.isNaN(parsed.getTime());
+};
+
 const hasValidCoordinates = (payload: Record<string, unknown>) => {
   const hasLat = payload.lat !== undefined;
   const hasLng = payload.lng !== undefined;
@@ -35,7 +41,8 @@ export const validatePodPayload = (value: unknown) => {
   if (!isRecord(value)) return 'La evidencia POD debe enviarse como un objeto válido';
   if (!isNonEmptyString(value.recipientName)) return 'La evidencia POD requiere el nombre del receptor';
   if (!isNonEmptyString(value.photo)) return 'La evidencia POD requiere una foto de entrega';
-  if (!isNonEmptyString(value.deliveredAt)) return 'La evidencia POD requiere la fecha de entrega';
+  if (!String(value.photo).startsWith('data:image/')) return 'La foto POD debe enviarse como una imagen válida';
+  if (!isIsoDateString(value.deliveredAt)) return 'La evidencia POD requiere una fecha de entrega válida';
   if (value.recipientDocument !== undefined && !isNonEmptyString(value.recipientDocument)) return 'El documento del receptor debe ser un texto no vacío';
   if (value.notes !== undefined && !isNonEmptyString(value.notes)) return 'Las notas de entrega deben ser un texto no vacío';
   if (value.signature !== undefined && !isNonEmptyString(value.signature)) return 'La firma digital debe ser un texto no vacío';

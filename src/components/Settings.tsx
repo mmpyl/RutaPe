@@ -1,14 +1,22 @@
 import React from 'react';
-import { Key, Webhook, Globe, Shield, Zap, Smartphone, Lock, ServerCog, PlusCircle } from 'lucide-react';
+import { 
+  Key, 
+  Webhook, 
+  Globe, 
+  Shield, 
+  Zap,
+  Smartphone,
+  Lock,
+  ServerCog
+} from 'lucide-react';
 
-const Settings: React.FC = () => (
-  <div className="space-y-10 pb-20">
-    <div>
-      <h2 className="text-4xl font-black text-slate-900 tracking-tighter">Integración y API</h2>
-      <p className="text-slate-500 font-medium mt-1">
-        Conecta tus sistemas externos con LogiPerú de forma segura.
-      </p>
-    </div>
+const Settings: React.FC = () => {
+  return (
+    <div className="space-y-10 pb-20">
+      <div>
+        <h2 className="text-4xl font-black text-slate-900 tracking-tighter">Integración y API</h2>
+        <p className="text-slate-500 font-medium mt-1">Conecta tus sistemas externos con LogiPerú de forma segura.</p>
+      </div>
 
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
       {/* Left column */}
@@ -32,55 +40,58 @@ const Settings: React.FC = () => (
               <div className="p-3 bg-white text-emerald-600 rounded-2xl shadow-sm border border-emerald-100">
                 <Lock size={20} />
               </div>
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-widest">
-                    Protección activa
-                  </span>
-                  <span className="text-[10px] font-bold text-emerald-700 bg-white px-2 py-1 rounded-full border border-emerald-200">
-                    Backend Managed
-                  </span>
-                </div>
-                <h4 className="text-lg font-bold text-slate-900">
-                  La clave de producción no se muestra en el frontend
-                </h4>
-                <p className="text-sm text-slate-600 leading-relaxed max-w-2xl">
-                  Este panel confirma el estado de la integración, pero las credenciales reales deben
-                  almacenarse en variables de entorno o en un backend seguro.
-                </p>
+              <div>
+                <h3 className="text-xl font-bold text-slate-900">Claves de API</h3>
+                <p className="text-sm text-slate-400">Las credenciales sensibles se gestionan fuera del cliente para evitar exposiciones accidentales.</p>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-              <div className="bg-white border border-slate-100 rounded-2xl p-5">
-                <div className="flex items-center gap-2 text-slate-900 font-bold text-sm mb-2">
-                  <ServerCog size={16} className="text-emerald-600" /> Estado de credencial
+            <div className="rounded-[32px] border border-emerald-100 bg-emerald-50 p-6 space-y-4">
+              <div className="flex items-start gap-4">
+                <div className="p-3 bg-white text-emerald-600 rounded-2xl shadow-sm border border-emerald-100">
+                  <Lock size={20} />
                 </div>
-                <p className="text-xs text-slate-500 leading-relaxed">
-                  Configura la clave en el servidor o en secretos del entorno. El navegador nunca debe
-                  recibir ni renderizar el valor completo.
-                </p>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-widest">Protección activa</span>
+                    <span className="text-[10px] font-bold text-emerald-700 bg-white px-2 py-1 rounded-full border border-emerald-200">Backend Managed</span>
+                  </div>
+                  <h4 className="text-lg font-bold text-slate-900">La clave de producción no se muestra en el frontend</h4>
+                  <p className="text-sm text-slate-600 leading-relaxed max-w-2xl">
+                    Este panel confirma el estado de la integración, pero las credenciales reales deben almacenarse en variables de entorno o en un backend seguro.
+                  </p>
+                </div>
               </div>
-              <div className="bg-white border border-slate-100 rounded-2xl p-5">
-                <div className="flex items-center gap-2 text-slate-900 font-bold text-sm mb-2">
-                  <Shield size={16} className="text-emerald-600" /> Política recomendada
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                <div className="bg-white border border-slate-100 rounded-2xl p-5">
+                  <div className="flex items-center gap-2 text-slate-900 font-bold text-sm mb-2">
+                    <ServerCog size={16} className="text-emerald-600" /> Estado de credencial
+                  </div>
+                  <p className="text-xs text-slate-500 leading-relaxed">
+                    Configura la clave en el servidor o en secretos del entorno. El navegador nunca debe recibir ni renderizar el valor completo.
+                  </p>
                 </div>
-                <p className="text-xs text-slate-500 leading-relaxed">
-                  Usa rotación periódica, permisos mínimos y auditoría de acceso para todas las
-                  credenciales operativas.
-                </p>
+                <div className="bg-white border border-slate-100 rounded-2xl p-5">
+                  <div className="flex items-center gap-2 text-slate-900 font-bold text-sm mb-2">
+                    <Shield size={16} className="text-emerald-600" /> Política recomendada
+                  </div>
+                  <p className="text-xs text-slate-500 leading-relaxed">
+                    Usa rotación periódica, permisos mínimos y auditoría de acceso para todas las credenciales operativas.
+                  </p>
+                </div>
               </div>
             </div>
           </div>
 
-          <div className="pt-6 border-t border-slate-50 flex justify-between items-center gap-4">
-            <p className="text-xs text-slate-400 leading-relaxed max-w-md">
-              Si sospechas que una credencial fue comprometida, regénérala desde tu proveedor y
-              actualiza el secreto en el backend.
-            </p>
-            <button className="flex items-center gap-2 text-xs font-bold text-slate-500 bg-slate-100 px-4 py-2 rounded-xl cursor-default">
-              <Shield size={14} /> Visible solo como estado seguro
-            </button>
+            <div className="pt-6 border-t border-slate-50 flex justify-between items-center gap-4">
+              <p className="text-xs text-slate-400 leading-relaxed max-w-md">
+                Si sospechas que una credencial fue comprometida, regénérala desde tu proveedor y actualiza el secreto en el backend.
+              </p>
+              <button className="flex items-center gap-2 text-xs font-bold text-slate-500 bg-slate-100 px-4 py-2 rounded-xl cursor-default">
+                <Shield size={14} /> Visible solo como estado seguro
+              </button>
+            </div>
           </div>
         </div>
 
@@ -142,25 +153,22 @@ const Settings: React.FC = () => (
                   <Smartphone size={16} className="text-blue-400" />
                   <span className="text-sm text-slate-400">WhatsApp API</span>
                 </div>
-                <span className="text-sm font-bold text-emerald-400">Conectado</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <div className="flex items-center gap-3">
-                  <Shield size={16} className="text-emerald-400" />
-                  <span className="text-sm text-slate-400">Exposición de claves</span>
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center gap-3">
+                    <Shield size={16} className="text-emerald-400" />
+                    <span className="text-sm text-slate-400">Exposición de claves</span>
+                  </div>
+                  <span className="text-sm font-bold text-emerald-400">Protegida</span>
                 </div>
-                <span className="text-sm font-bold text-emerald-400">Protegida</span>
-              </div>
-              <div className="pt-4 border-t border-white/10">
-                <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-4">
-                  Uso de API (Mes)
-                </div>
-                <div className="h-2 bg-white/10 rounded-full overflow-hidden">
-                  <div className="h-full bg-emerald-500 w-[65%]" />
-                </div>
-                <div className="flex justify-between mt-2">
-                  <span className="text-[10px] font-bold text-slate-500">6,500 / 10,000</span>
-                  <span className="text-[10px] font-bold text-slate-500">65%</span>
+                <div className="pt-4 border-t border-white/10">
+                  <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-4">Uso de API (Mes)</div>
+                  <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+                    <div className="h-full bg-emerald-500 w-[65%]" />
+                  </div>
+                  <div className="flex justify-between mt-2">
+                    <span className="text-[10px] font-bold text-slate-500">6,500 / 10,000</span>
+                    <span className="text-[10px] font-bold text-slate-500">65%</span>
+                  </div>
                 </div>
               </div>
             </div>

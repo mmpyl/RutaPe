@@ -12,6 +12,7 @@ interface PodModalProps {
 
 const CANVAS_WIDTH = 520;
 const CANVAS_HEIGHT = 180;
+const MAX_PHOTO_SIZE_BYTES = 4 * 1024 * 1024;
 
 const PodModal: React.FC<PodModalProps> = ({ isOpen, orderId, onClose, onSubmit }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -40,6 +41,10 @@ const PodModal: React.FC<PodModalProps> = ({ isOpen, orderId, onClose, onSubmit 
     setNotes('');
     setAcknowledgedByDriver(false);
     setError(null);
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
 
     requestAnimationFrame(() => {
       const canvas = canvasRef.current;
@@ -74,6 +79,7 @@ const PodModal: React.FC<PodModalProps> = ({ isOpen, orderId, onClose, onSubmit 
     const ctx = canvas?.getContext('2d');
     if (!canvas || !ctx) return;
 
+    canvas.setPointerCapture(event.pointerId);
     const { x, y } = getCanvasPoint(event);
     ctx.beginPath();
     ctx.moveTo(x, y);
@@ -93,9 +99,14 @@ const PodModal: React.FC<PodModalProps> = ({ isOpen, orderId, onClose, onSubmit 
     ctx.stroke();
   };
 
-  const finishSignature = () => {
+  const finishSignature = (event?: React.PointerEvent<HTMLCanvasElement>) => {
     if (!isDrawing) return;
     const canvas = canvasRef.current;
+
+    if (canvas && event && canvas.hasPointerCapture(event.pointerId)) {
+      canvas.releasePointerCapture(event.pointerId);
+    }
+
     setIsDrawing(false);
     if (canvas && hasSignature) {
       setSignature(canvas.toDataURL('image/png'));
@@ -117,10 +128,26 @@ const PodModal: React.FC<PodModalProps> = ({ isOpen, orderId, onClose, onSubmit 
     const file = event.target.files?.[0];
     if (!file) return;
 
+    if (!file.type.startsWith('image/')) {
+      setError('Solo puedes adjuntar imágenes como evidencia POD.');
+      event.target.value = '';
+      return;
+    }
+
+    if (file.size > MAX_PHOTO_SIZE_BYTES) {
+      setError('La foto supera el límite de 4MB. Usa una imagen más liviana.');
+      event.target.value = '';
+      return;
+    }
+
     const reader = new FileReader();
     reader.onload = () => {
       setPhoto(String(reader.result || ''));
       setPhotoName(file.name);
+      setError(null);
+    };
+    reader.onerror = () => {
+      setError('No pudimos leer la foto seleccionada. Intenta nuevamente.');
     };
     reader.readAsDataURL(file);
   };
@@ -156,7 +183,7 @@ const PodModal: React.FC<PodModalProps> = ({ isOpen, orderId, onClose, onSubmit 
   return (
     <AnimatePresence>
       <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[1000] flex items-center justify-center p-4">
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, scale: 0.9, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.9, y: 20 }}
@@ -169,7 +196,7 @@ const PodModal: React.FC<PodModalProps> = ({ isOpen, orderId, onClose, onSubmit 
                 <X size={24} className="text-slate-400" />
               </button>
             </div>
-            
+
             <div className="space-y-8">
               <div className="p-6 bg-emerald-50 rounded-3xl border border-emerald-100 flex items-center gap-4">
                 <div className="p-3 bg-emerald-500 text-white rounded-2xl">
@@ -188,7 +215,7 @@ const PodModal: React.FC<PodModalProps> = ({ isOpen, orderId, onClose, onSubmit 
                     <UserRound className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
                     <input
                       value={recipientName}
-                      onChange={(e) => setRecipientName(e.target.value)}
+                      onChange={(event) => setRecipientName(event.target.value)}
                       placeholder="Ej: María Torres"
                       className="w-full pl-12 pr-4 py-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-emerald-500 outline-none text-sm font-medium"
                     />
@@ -198,7 +225,7 @@ const PodModal: React.FC<PodModalProps> = ({ isOpen, orderId, onClose, onSubmit 
                   <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Documento (opcional)</label>
                   <input
                     value={recipientDocument}
-                    onChange={(e) => setRecipientDocument(e.target.value)}
+                    onChange={(event) => setRecipientDocument(event.target.value)}
                     placeholder="DNI / referencia"
                     className="w-full px-4 py-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-emerald-500 outline-none text-sm font-medium"
                   />
@@ -245,6 +272,7 @@ const PodModal: React.FC<PodModalProps> = ({ isOpen, orderId, onClose, onSubmit 
                   <span className="text-xs font-bold text-slate-400 flex items-center gap-2">
                     <Upload size={14} /> {photo ? 'Cambiar Foto de Evidencia' : 'Subir Foto de Evidencia'}
                   </span>
+                  <span className="text-[11px] text-slate-400">Formato imagen · máximo 4MB</span>
                 </button>
                 {photo && (
                   <div className="overflow-hidden rounded-3xl border border-slate-100 bg-slate-50 p-2">
@@ -259,7 +287,7 @@ const PodModal: React.FC<PodModalProps> = ({ isOpen, orderId, onClose, onSubmit 
                   <NotebookPen className="absolute left-4 top-4 text-slate-300" size={18} />
                   <textarea
                     value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
+                    onChange={(event) => setNotes(event.target.value)}
                     rows={4}
                     placeholder="Ej: Cliente recibió en portería, caja sin daños visibles."
                     className="w-full pl-12 pr-4 py-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-emerald-500 outline-none text-sm font-medium resize-none"
@@ -271,7 +299,7 @@ const PodModal: React.FC<PodModalProps> = ({ isOpen, orderId, onClose, onSubmit 
                 <input
                   type="checkbox"
                   checked={acknowledgedByDriver}
-                  onChange={(e) => setAcknowledgedByDriver(e.target.checked)}
+                  onChange={(event) => setAcknowledgedByDriver(event.target.checked)}
                   className="mt-1 h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
                 />
                 <div>
@@ -287,7 +315,7 @@ const PodModal: React.FC<PodModalProps> = ({ isOpen, orderId, onClose, onSubmit 
                 </div>
               )}
 
-              <button 
+              <button
                 onClick={handleSubmit}
                 className="w-full bg-emerald-600 text-white py-5 rounded-2xl font-bold text-sm shadow-xl shadow-emerald-100 hover:bg-emerald-700 transition-all"
               >
