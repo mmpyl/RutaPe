@@ -4,10 +4,19 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { WebSocketServer, WebSocket } from "ws";
 import { createServer } from "http";
-import { Order, Driver, Route } from "./src/types.js";
+import { Driver, Order, Route } from "./src/types.js";
+import { createInitialDrivers, createInitialOrders, createInitialRoutes } from "./server/data/mockData.js";
+import { synchronizeRoutesAndDrivers } from "./server/services/routeState.js";
+import { buildOrderPayload, validateCreateOrderPayload, validateOrderPatchPayload } from "./server/validation/orders.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+type LogisticsSocketEvent =
+  | { type: "INIT"; data: { orders: Order[]; drivers: Driver[]; routes: Route[] } }
+  | { type: "DRIVER_UPDATE"; data: Driver[] }
+  | { type: "ORDER_UPDATE"; data: Order[] }
+  | { type: "ROUTE_UPDATE"; data: Route[] };
 
 async function startServer() {
   const app = express();
@@ -16,38 +25,13 @@ async function startServer() {
 
   app.use(express.json());
 
-  // --- Mock Data ---
-  let orders: Order[] = [
-    { id: '4021', status: 'Entregado', time: 'Hace 2 min', client: 'Juan Pérez', address: 'Av. Larco 123, Miraflores', color: 'bg-emerald-100 text-emerald-700', items: 3, value: 150.50, driverId: 'D1', carrier: 'Shalom', carrierLogo: 'SH', lat: -12.1221, lng: -77.0298 },
-    { id: '4022', status: 'En Ruta', time: 'Hace 15 min', client: 'María García', address: 'Calle Las Flores 456, San Isidro', color: 'bg-blue-100 text-blue-700', items: 1, value: 45.00, driverId: 'D1', carrier: 'Shalom', carrierLogo: 'SH', lat: -12.0945, lng: -77.0356 },
-    { id: '4023', status: 'Retrasado', time: 'Hace 1 hr', client: 'Carlos Torres', address: 'Jr. Puno 789, Cercado', color: 'bg-red-100 text-red-700', items: 5, value: 320.00, driverId: 'D3', carrier: 'Urbano', carrierLogo: 'UR', lat: -12.0464, lng: -77.0297 },
-    { id: '4024', status: 'Pendiente', time: 'Hace 2 hr', client: 'Ana Loli', address: 'Av. Universitaria 101, SMP', color: 'bg-slate-100 text-slate-700', items: 2, value: 89.90, lat: -11.9912, lng: -77.0823 },
-    { id: '4025', status: 'Pendiente', time: 'Hace 3 hr', client: 'Roberto Díaz', address: 'Av. Javier Prado 1500, San Borja', color: 'bg-slate-100 text-slate-700', items: 4, value: 210.00, lat: -12.0854, lng: -77.0012 },
-    { id: '4026', status: 'En Ruta', time: 'Hace 30 min', client: 'Elena Paz', address: 'Av. Arequipa 2400, Lince', color: 'bg-blue-100 text-blue-700', items: 2, value: 120.00, driverId: 'D2', carrier: 'Marvi', carrierLogo: 'MV', lat: -12.0823, lng: -77.0345 },
-  ];
+  let orders: Order[] = createInitialOrders();
+  let drivers: Driver[] = createInitialDrivers();
+  let routes: Route[] = createInitialRoutes();
 
-  let drivers: Driver[] = [
-    { id: 'D1', name: "Carlos Mendoza", status: "En Ruta", orders: 5, efficiency: 98, avatar: "CM", vehicle: "Camioneta NHR", phone: "987654321", carrier: 'Shalom', carrierLogo: 'SH', lat: -12.1000, lng: -77.0300 },
-    { id: 'D2', name: "Luis Paredes", status: "En Ruta", orders: 3, efficiency: 95, avatar: "LP", vehicle: "Moto Cargo", phone: "912345678", carrier: 'Marvi', carrierLogo: 'MV', lat: -12.0800, lng: -77.0350 },
-    { id: 'D3', name: "Jorge Ruiz", status: "En Ruta", orders: 3, efficiency: 92, avatar: "JR", vehicle: "Furgón H100", phone: "955443322", carrier: 'Urbano', carrierLogo: 'UR', lat: -12.0500, lng: -77.0300 },
-    { id: 'D4', name: "Ana Belén", status: "Disponible", orders: 0, efficiency: 99, avatar: "AB", vehicle: "Camioneta NHR", phone: "944332211", carrier: 'Shalom', carrierLogo: 'SH', lat: -12.1200, lng: -77.0200 },
-  ];
-
-  let routes: Route[] = [
-    { id: 'R1', driverId: 'D1', stops: ['4021', '4022'], status: 'Activa', progress: 50 },
-    { id: 'R2', driverId: 'D2', stops: ['4026'], status: 'Activa', progress: 30 },
-    { id: 'R3', driverId: 'D3', stops: ['4023'], status: 'Activa', progress: 10 },
-  ];
-
-  // --- WebSocket Server ---
   const wss = new WebSocketServer({ server });
 
-  wss.on("connection", (ws) => {
-    console.log("Client connected to WebSocket");
-    ws.send(JSON.stringify({ type: "INIT", data: { orders, drivers, routes } }));
-  });
-
-  const broadcast = (data: any) => {
+  const broadcast = (data: LogisticsSocketEvent) => {
     wss.clients.forEach((client) => {
       if (client.readyState === WebSocket.OPEN) {
         client.send(JSON.stringify(data));
@@ -55,11 +39,24 @@ async function startServer() {
     });
   };
 
-  // --- Driver Simulation ---
+  const syncRouteState = () => {
+    const nextState = synchronizeRoutesAndDrivers(routes, orders, drivers);
+    routes = nextState.routes;
+    drivers = nextState.drivers;
+  };
+
+  const broadcastSnapshot = () => {
+    broadcast({ type: "INIT", data: { orders, drivers, routes } });
+  };
+
+  wss.on("connection", (ws) => {
+    console.log("Client connected to WebSocket");
+    ws.send(JSON.stringify({ type: "INIT", data: { orders, drivers, routes } }));
+  });
+
   setInterval(() => {
-    drivers = drivers.map(driver => {
+    drivers = drivers.map((driver) => {
       if (driver.status === "En Ruta") {
-        // Small random movement
         const newLat = driver.lat! + (Math.random() - 0.5) * 0.001;
         const newLng = driver.lng! + (Math.random() - 0.5) * 0.001;
         return { ...driver, lat: newLat, lng: newLng };
@@ -69,70 +66,88 @@ async function startServer() {
     broadcast({ type: "DRIVER_UPDATE", data: drivers });
   }, 3000);
 
-  // --- API Routes ---
-
-  app.get("/api/orders", (req, res) => {
+  app.get("/api/orders", (_req, res) => {
     res.json(orders);
   });
 
   app.post("/api/orders", (req, res) => {
-    const newOrder = { 
-      ...req.body, 
+    const validationError = validateCreateOrderPayload(req.body);
+    if (validationError) {
+      return res.status(400).json({ error: validationError });
+    }
+
+    const payload = req.body as Record<string, unknown>;
+    const newOrder: Order = {
+      ...(buildOrderPayload(payload) as Order),
       id: (Math.floor(Math.random() * 1000) + 4100).toString(),
-      carrier: req.body.carrier || 'Flota Propia',
-      carrierLogo: req.body.carrierLogo || 'FP'
+      carrier: payload.carrier ? String(payload.carrier).trim() : "Flota Propia",
+      carrierLogo: payload.carrierLogo ? String(payload.carrierLogo).trim() : "FP",
     };
+
     orders = [newOrder, ...orders];
     broadcast({ type: "ORDER_UPDATE", data: orders });
-    res.status(201).json(newOrder);
+    return res.status(201).json(newOrder);
   });
 
   app.patch("/api/orders/:id", (req, res) => {
     const { id } = req.params;
-    orders = orders.map(o => o.id === id ? { ...o, ...req.body } : o);
-    const updatedOrder = orders.find(o => o.id === id);
+    const existingOrder = orders.find((order) => order.id === id);
+
+    if (!existingOrder) {
+      return res.status(404).json({ error: "Pedido no encontrado" });
+    }
+
+    const validationError = validateOrderPatchPayload(req.body);
+    if (validationError) {
+      return res.status(400).json({ error: validationError });
+    }
+
+    const updatedOrder = buildOrderPayload(req.body as Record<string, unknown>, existingOrder) as Order;
+    orders = orders.map((order) => (order.id === id ? updatedOrder : order));
+    syncRouteState();
+
     broadcast({ type: "ORDER_UPDATE", data: orders });
-    res.json(updatedOrder);
+    broadcast({ type: "ROUTE_UPDATE", data: routes });
+    broadcast({ type: "DRIVER_UPDATE", data: drivers });
+    return res.json(updatedOrder);
   });
 
-  app.get("/api/drivers", (req, res) => {
+  app.get("/api/drivers", (_req, res) => {
     res.json(drivers);
   });
 
-  app.get("/api/routes", (req, res) => {
+  app.get("/api/routes", (_req, res) => {
     res.json(routes);
   });
 
-  app.post("/api/routes/optimize", (req, res) => {
-    const pendingOrders = orders.filter(o => o.status === 'Pendiente');
+  app.post("/api/routes/optimize", (_req, res) => {
+    const pendingOrders = orders.filter((order) => order.status === "Pendiente");
     if (pendingOrders.length === 0) {
       return res.json({ message: "No hay pedidos pendientes para optimizar", routes });
     }
 
-    const availableDrivers = drivers.filter(d => d.status === 'Disponible' || d.status === 'En Ruta');
+    const availableDrivers = drivers.filter((driver) => driver.status === "Disponible" || driver.status === "En Ruta");
     if (availableDrivers.length === 0) {
       return res.status(400).json({ error: "No hay conductores disponibles" });
     }
 
-    const DEPOT = { lat: -12.1221, lng: -77.0298 };
     const getDist = (lat1: number, lng1: number, lat2: number, lng2: number) => {
       return Math.sqrt(Math.pow(lat2 - lat1, 2) + Math.pow(lng2 - lng1, 2));
     };
 
-    // 1. Balanced Assignment: Assign orders to drivers considering distance and current load
-    pendingOrders.forEach(order => {
-      let bestDriver = null;
+    pendingOrders.forEach((order) => {
+      let bestDriver: Driver | null = null;
       let minCost = Infinity;
 
-      availableDrivers.forEach(driver => {
-        const route = routes.find(r => r.driverId === driver.id && r.status === 'Activa');
+      availableDrivers.forEach((driver) => {
+        const route = routes.find((currentRoute) => currentRoute.driverId === driver.id && currentRoute.status === "Activa");
         let lastLat = driver.lat!;
         let lastLng = driver.lng!;
 
         if (route && route.stops.length > 0) {
           const lastStopId = route.stops[route.stops.length - 1];
-          const lastStop = orders.find(o => o.id === lastStopId);
-          if (lastStop && lastStop.lat && lastStop.lng) {
+          const lastStop = orders.find((currentOrder) => currentOrder.id === lastStopId);
+          if (lastStop?.lat && lastStop?.lng) {
             lastLat = lastStop.lat;
             lastLng = lastStop.lng;
           }
@@ -140,8 +155,7 @@ async function startServer() {
 
         const dist = getDist(lastLat, lastLng, order.lat!, order.lng!);
         const currentLoad = route ? route.stops.length : 0;
-        // Cost function: distance + penalty for existing load to balance work
-        const cost = dist + (currentLoad * 0.005); 
+        const cost = dist + currentLoad * 0.005;
 
         if (cost < minCost) {
           minCost = cost;
@@ -150,75 +164,71 @@ async function startServer() {
       });
 
       if (bestDriver) {
-        order.driverId = (bestDriver as Driver).id;
-        order.status = 'En Ruta';
-        order.color = 'bg-blue-100 text-blue-700';
+        order.driverId = bestDriver.id;
+        order.status = "En Ruta";
+        order.color = "bg-blue-100 text-blue-700";
 
-        let route = routes.find(r => r.driverId === (bestDriver as Driver).id && r.status === 'Activa');
+        let route = routes.find((currentRoute) => currentRoute.driverId === bestDriver!.id && currentRoute.status === "Activa");
         if (!route) {
           route = {
             id: `R${Math.floor(Math.random() * 1000)}`,
-            driverId: (bestDriver as Driver).id,
+            driverId: bestDriver.id,
             stops: [],
-            status: 'Activa',
-            progress: 0
+            status: "Activa",
+            progress: 0,
           };
           routes.push(route);
         }
         route.stops.push(order.id);
-        (bestDriver as Driver).status = 'En Ruta';
       }
     });
 
-    // 2. TSP Optimization with 2-Opt Refinement
-    routes.forEach(route => {
-      if (route.status !== 'Activa') return;
-      const driver = drivers.find(d => d.id === route.driverId);
+    routes.forEach((route) => {
+      if (route.status !== "Activa") return;
+      const driver = drivers.find((currentDriver) => currentDriver.id === route.driverId);
       if (!driver) return;
 
-      const activeStops = route.stops.filter(id => {
-        const o = orders.find(ord => ord.id === id);
-        return o?.status !== 'Entregado';
+      const activeStops = route.stops.filter((id) => {
+        const order = orders.find((currentOrder) => currentOrder.id === id);
+        return order?.status !== "Entregado";
       });
 
       if (activeStops.length < 2) return;
 
-      // Initial sequence using Nearest Neighbor
       let optimizedStops: string[] = [];
-      let remaining = [...activeStops];
+      const remaining = [...activeStops];
       let currLat = driver.lat!;
       let currLng = driver.lng!;
 
       while (remaining.length > 0) {
         let nearestIdx = 0;
         let minDist = Infinity;
-        remaining.forEach((id, idx) => {
-          const o = orders.find(ord => ord.id === id)!;
-          const d = getDist(currLat, currLng, o.lat!, o.lng!);
-          if (d < minDist) {
-            minDist = d;
-            nearestIdx = idx;
+        remaining.forEach((id, index) => {
+          const currentOrder = orders.find((order) => order.id === id)!;
+          const distance = getDist(currLat, currLng, currentOrder.lat!, currentOrder.lng!);
+          if (distance < minDist) {
+            minDist = distance;
+            nearestIdx = index;
           }
         });
         const nextId = remaining.splice(nearestIdx, 1)[0];
         optimizedStops.push(nextId);
-        const nextOrder = orders.find(o => o.id === nextId)!;
+        const nextOrder = orders.find((order) => order.id === nextId)!;
         currLat = nextOrder.lat!;
         currLng = nextOrder.lng!;
       }
 
-      // 2-Opt Refinement: Try to swap segments to reduce total distance
       const calculateRouteDist = (stopIds: string[]) => {
-        let d = 0;
-        let pLat = driver.lat!;
-        let pLng = driver.lng!;
-        stopIds.forEach(id => {
-          const o = orders.find(ord => ord.id === id)!;
-          d += getDist(pLat, pLng, o.lat!, o.lng!);
-          pLat = o.lat!;
-          pLng = o.lng!;
+        let distance = 0;
+        let previousLat = driver.lat!;
+        let previousLng = driver.lng!;
+        stopIds.forEach((id) => {
+          const currentOrder = orders.find((order) => order.id === id)!;
+          distance += getDist(previousLat, previousLng, currentOrder.lat!, currentOrder.lng!);
+          previousLat = currentOrder.lat!;
+          previousLng = currentOrder.lng!;
         });
-        return d;
+        return distance;
       };
 
       let improved = true;
@@ -226,13 +236,12 @@ async function startServer() {
 
       while (improved) {
         improved = false;
-        for (let i = 0; i < optimizedStops.length - 1; i++) {
-          for (let k = i + 1; k < optimizedStops.length; k++) {
-            // Swap segment i to k
+        for (let i = 0; i < optimizedStops.length - 1; i += 1) {
+          for (let k = i + 1; k < optimizedStops.length; k += 1) {
             const newStops = [
               ...optimizedStops.slice(0, i),
               ...optimizedStops.slice(i, k + 1).reverse(),
-              ...optimizedStops.slice(k + 1)
+              ...optimizedStops.slice(k + 1),
             ];
             const newDist = calculateRouteDist(newStops);
             if (newDist < bestDist) {
@@ -244,11 +253,12 @@ async function startServer() {
         }
       }
 
-      const deliveredStops = route.stops.filter(id => orders.find(o => o.id === id)?.status === 'Entregado');
+      const deliveredStops = route.stops.filter((id) => orders.find((order) => order.id === id)?.status === "Entregado");
       route.stops = [...deliveredStops, ...optimizedStops];
     });
 
-    broadcast({ type: "INIT", data: { orders, drivers, routes } });
+    syncRouteState();
+    broadcastSnapshot();
     res.json({ message: "Rutas optimizadas con éxito", routes });
   });
 
@@ -258,17 +268,17 @@ async function startServer() {
     res.json({ success: true, message: `Alert sent for order ${orderId}` });
   });
 
-  // --- Vite Middleware ---
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
+      root: __dirname,
     });
     app.use(vite.middlewares);
   } else {
     const distPath = path.join(process.cwd(), 'dist');
     app.use(express.static(distPath));
-    app.get('*', (req, res) => {
+    app.get('*', (_req, res) => {
       res.sendFile(path.join(distPath, 'index.html'));
     });
   }
