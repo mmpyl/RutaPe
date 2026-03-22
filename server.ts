@@ -96,6 +96,21 @@ async function startServer() {
     broadcast({ type: "ORDER_UPDATE", data: orders });
     return res.status(201).json(newOrder);
   });
+  drivers = withCurrentGps;
+  driversRepository.save(withCurrentGps).catch((err) =>
+    console.error('[repo] Error guardando conductores:', err),
+  );
+};
+
+const getRoutes = () => routes;
+const setRoutes = (next: Route[]) => {
+  routes = next;
+  routesRepository.save(next).catch((err) => console.error('[repo] Error guardando rutas:', err));
+};
+
+// ---------------------------------------------------------------------------
+// Bootstrap
+// ---------------------------------------------------------------------------
 
   app.patch("/api/orders/:id", async (req, res) => {
     const { id } = req.params;
@@ -144,11 +159,7 @@ async function startServer() {
     }
   });
 
-  app.post("/api/whatsapp/alert", (req, res) => {
-    const { orderId } = req.body;
-    console.log(`Simulating WhatsApp alert for order ${orderId}`);
-    res.json({ success: true, message: `Alert sent for order ${orderId}` });
-  });
+  app.use('/api', createApiRouter(ordersService, routesService, getDrivers));
 
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
@@ -165,7 +176,7 @@ async function startServer() {
     });
   }
 
-  server.listen(PORT, "0.0.0.0", () => {
+  server.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running on http://localhost:${PORT}`);
   });
 }
