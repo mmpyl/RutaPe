@@ -3,11 +3,12 @@ import { Driver, Order, Route, RouteOptimizationResponse } from '../types';
 import {
   createOrderRequest,
   fetchLogisticsSnapshot,
+  isBrowserDataMode,
   optimizeRoutesRequest,
   sendWhatsappAlertRequest,
   updateOrderRequest,
 } from '../shared/api/logistics';
-import { connectLogisticsSocket } from '../shared/realtime/socket';
+import { connectLogisticsSocket, WebSocketStatus } from '../shared/realtime/socket';
 
 export interface UseApiReturn {
   orders: Order[];
@@ -29,6 +30,8 @@ export const useApi = (): UseApiReturn => {
   const [routes, setRoutes] = useState<Route[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [wsStatus, setWsStatus] = useState<WebSocketStatus>(isBrowserDataMode() ? 'disabled' : 'connecting');
+  const browserMode = isBrowserDataMode();
 
   const fetchData = useCallback(async () => {
     try {
@@ -46,7 +49,12 @@ export const useApi = (): UseApiReturn => {
   }, []);
 
   useEffect(() => {
-    fetchData();
+    void fetchData();
+
+    if (browserMode) {
+      setWsStatus('disabled');
+      return undefined;
+    }
 
     const socket = connectLogisticsSocket({
       onInit: (data) => {
@@ -57,6 +65,7 @@ export const useApi = (): UseApiReturn => {
       onDriverUpdate: setDrivers,
       onOrderUpdate: setOrders,
       onRouteUpdate: setRoutes,
+      onStatusChange: setWsStatus,
       onError: (err) => {
         console.error('WebSocket error:', err);
       },
@@ -67,9 +76,12 @@ export const useApi = (): UseApiReturn => {
     };
   }, [browserMode, fetchData]);
 
-  const addOrder = useCallback(async (order: Partial<Order>): Promise<Order> => {
+  const addOrder = useCallback(async (order: Partial<Order>) => {
     try {
       const newOrder = await createOrderRequest(order);
+      if (browserMode) {
+        setOrders((currentOrders) => [newOrder, ...currentOrders]);
+      }
       setError(null);
       return newOrder;
     } catch (err) {
@@ -77,11 +89,14 @@ export const useApi = (): UseApiReturn => {
       setError(message);
       throw err;
     }
-  }, []);
+  }, [browserMode]);
 
-  const updateOrder = useCallback(async (id: string, updates: Partial<Order>): Promise<Order> => {
+  const updateOrder = useCallback(async (id: string, updates: Partial<Order>) => {
     try {
       const updatedOrder = await updateOrderRequest(id, updates);
+      if (browserMode) {
+        setOrders((currentOrders) => currentOrders.map((order) => (order.id === id ? updatedOrder : order)));
+      }
       setError(null);
       return updatedOrder;
     } catch (err) {
@@ -89,7 +104,7 @@ export const useApi = (): UseApiReturn => {
       setError(message);
       throw err;
     }
-  }, []);
+  }, [browserMode]);
 
   const sendAlert = useCallback(async (orderId: string) => {
     try {
@@ -103,10 +118,16 @@ export const useApi = (): UseApiReturn => {
     }
   }, []);
 
-  const optimizeRoutes = async (): Promise<RouteOptimizationResponse> => {
+  const optimizeRoutes = useCallback(async (): Promise<RouteOptimizationResponse> => {
     try {
       setLoading(true);
       const data = await optimizeRoutesRequest();
+      if (browserMode) {
+        const snapshot = await fetchLogisticsSnapshot();
+        setOrders(snapshot.orders);
+        setDrivers(snapshot.drivers);
+        setRoutes(snapshot.routes);
+      }
       setError(null);
       return data;
     } catch (err) {
@@ -116,7 +137,7 @@ export const useApi = (): UseApiReturn => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [browserMode]);
 
   return {
     orders,
@@ -125,6 +146,7 @@ export const useApi = (): UseApiReturn => {
     loading,
     error,
     wsStatus,
+    browserMode,
     fetchData,
     addOrder,
     updateOrder,
