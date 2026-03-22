@@ -130,3 +130,12 @@ Este comando levanta el servidor Express y, en modo desarrollo, monta Vite como 
 3. Abre `http://localhost:3000`.
 
 `npm run start` sirve el contenido de `dist/` desde Express y también mantiene activos los endpoints `/api/*` y el canal WebSocket. Si tu entorno necesita otro puerto, define `PORT` antes de iniciar.
+
+### Flujo recomendado en VS Code
+
+1. Abre la carpeta del proyecto en VS Code.
+2. Ejecuta la tarea **RutaPe: install** la primera vez.
+3. Para desarrollo usa la tarea **RutaPe: dev** o el launch **RutaPe: Dev Server**.
+4. Para probar el build local usa primero **RutaPe: Build** y luego la tarea **RutaPe: start** o el launch **RutaPe: Start (prod)**.
+
+Las configuraciones de VS Code quedan alineadas con el log actual del servidor (`Server running in ... mode on http://localhost:PORT`) para que `serverReadyAction` detecte correctamente cuándo abrir la aplicación.
