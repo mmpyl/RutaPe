@@ -184,6 +184,13 @@ const Settings: React.FC = () => {
                   </div>
                   <span className="text-sm font-bold text-emerald-400">Protegida</span>
                 </div>
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center gap-3">
+                    <Shield size={16} className="text-emerald-400" />
+                    <span className="text-sm text-slate-400">Exposición de claves</span>
+                  </div>
+                  <span className="text-sm font-bold text-emerald-400">Protegida</span>
+                </div>
                 <div className="pt-4 border-t border-white/10">
                   <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-4">Uso de API (Mes)</div>
                   <div className="h-2 bg-white/10 rounded-full overflow-hidden">

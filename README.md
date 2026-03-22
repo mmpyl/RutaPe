@@ -1,5 +1,4 @@
 
-
 # RutaPe
 
 MVP de monitoreo y operación logística de última milla para PYMEs, con dashboard operativo, simulación de rutas, tracking en tiempo real y análisis comparativo por carrier.
@@ -113,3 +112,21 @@ Estas mejoras ofrecen más retorno que abrir nuevos canales de despliegue antes 
 ## Documento de rediseño de producto
 
 Para el blueprint completo de RutaPe como agregador logístico SaaS/marketplace, revisa `docs/rutape-saas-platform-blueprint.md`.
+
+## Ejecución local y despliegue local
+
+### Desarrollo
+
+1. Instala dependencias con `npm install`.
+2. Ejecuta `npm run dev`.
+3. Abre `http://localhost:3000`.
+
+Este comando levanta el servidor Express y, en modo desarrollo, monta Vite como middleware para servir el frontend y el WebSocket en el mismo puerto.
+
+### Verificación de build local
+
+1. Ejecuta `npm run build`.
+2. Ejecuta `npm run start`.
+3. Abre `http://localhost:3000`.
+
+`npm run start` sirve el contenido de `dist/` desde Express y también mantiene activos los endpoints `/api/*` y el canal WebSocket. Si tu entorno necesita otro puerto, define `PORT` antes de iniciar.

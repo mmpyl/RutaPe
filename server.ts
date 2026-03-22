@@ -1,5 +1,5 @@
+import "dotenv/config";
 import express from "express";
-import { createServer as createViteServer } from "vite";
 import path from "path";
 import { fileURLToPath } from "url";
 import { WebSocketServer, WebSocket } from "ws";
@@ -22,7 +22,9 @@ type LogisticsSocketEvent =
 async function startServer() {
   const app = express();
   const server = createServer(app);
-  const PORT = 3000;
+  const PORT = Number(process.env.PORT ?? 3000);
+  const HOST = process.env.HOST ?? "0.0.0.0";
+  const isProduction = process.argv.includes("--prod") || process.env.NODE_ENV === "production";
   const repository = new FileLogisticsStateRepository(path.join(process.cwd(), '.rutape-data', 'logistics-state.json'));
 
   app.use(express.json());
@@ -96,21 +98,6 @@ async function startServer() {
     broadcast({ type: "ORDER_UPDATE", data: orders });
     return res.status(201).json(newOrder);
   });
-  drivers = withCurrentGps;
-  driversRepository.save(withCurrentGps).catch((err) =>
-    console.error('[repo] Error guardando conductores:', err),
-  );
-};
-
-const getRoutes = () => routes;
-const setRoutes = (next: Route[]) => {
-  routes = next;
-  routesRepository.save(next).catch((err) => console.error('[repo] Error guardando rutas:', err));
-};
-
-// ---------------------------------------------------------------------------
-// Bootstrap
-// ---------------------------------------------------------------------------
 
   app.patch("/api/orders/:id", async (req, res) => {
     const { id } = req.params;
@@ -161,7 +148,8 @@ const setRoutes = (next: Route[]) => {
 
   app.use('/api', createApiRouter(ordersService, routesService, getDrivers));
 
-  if (process.env.NODE_ENV !== "production") {
+  if (!isProduction) {
+    const { createServer: createViteServer } = await import("vite");
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
@@ -176,8 +164,9 @@ const setRoutes = (next: Route[]) => {
     });
   }
 
-  server.listen(PORT, '0.0.0.0', () => {
-    console.log(`Server running on http://localhost:${PORT}`);
+  server.listen(PORT, HOST, () => {
+    const runtimeMode = isProduction ? "production" : "development";
+    console.log(`Server running in ${runtimeMode} mode on http://localhost:${PORT}`);
   });
 }
 
