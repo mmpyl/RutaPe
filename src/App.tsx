@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useApi } from './hooks/useApi';
 import Sidebar from './components/Sidebar';
@@ -11,7 +11,7 @@ import Settings from './components/Settings';
 import LandingPage from './components/LandingPage';
 import NewOrderModal from './components/Modals/NewOrderModal';
 import PodModal from './components/Modals/PodModal';
-import { Order } from './types';
+import { BulkImportedOrder, Order, PodProof } from './types';
 
 const App: React.FC = () => {
   const [view, setView] = useState<'plan' | 'demo'>('plan');
@@ -19,22 +19,23 @@ const App: React.FC = () => {
   const [isNewOrderModalOpen, setIsNewOrderModalOpen] = useState(false);
   const [podModal, setPodModal] = useState<{ isOpen: boolean; orderId: string | null }>({
     isOpen: false,
-    orderId: null
+    orderId: null,
   });
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [trackedOrderId, setTrackedOrderId] = useState<string | null>(null);
   const [isMapVisible, setIsMapVisible] = useState(false);
+  const toastTimeoutRef = useRef<number | null>(null);
 
-  const { 
-    orders, 
-    drivers, 
-    routes, 
-    loading, 
-    error, 
-    addOrder, 
-    updateOrder, 
+  const {
+    orders,
+    drivers,
+    routes,
+    loading,
+    error,
+    addOrder,
+    updateOrder,
     sendAlert,
-    optimizeRoutes
+    optimizeRoutes,
   } = useApi();
 
   useEffect(() => {
@@ -45,9 +46,18 @@ const App: React.FC = () => {
     }
   }, [view]);
 
+  useEffect(() => () => {
+    if (toastTimeoutRef.current) {
+      window.clearTimeout(toastTimeoutRef.current);
+    }
+  }, []);
+
   const showToast = (message: string, type: 'success' | 'error' = 'success') => {
     setToast({ message, type });
-    setTimeout(() => setToast(null), 3000);
+    if (toastTimeoutRef.current) {
+      window.clearTimeout(toastTimeoutRef.current);
+    }
+    toastTimeoutRef.current = window.setTimeout(() => setToast(null), 3000);
   };
 
   const handleAddOrder = async (orderData: Partial<Order>) => {
@@ -55,23 +65,23 @@ const App: React.FC = () => {
       await addOrder(orderData);
       setIsNewOrderModalOpen(false);
       showToast('Pedido creado exitosamente');
-    } catch (err) {
+    } catch {
       showToast('Error al crear el pedido', 'error');
     }
   };
 
-  const handleBulkImport = async (newOrders: any[]) => {
+  const handleBulkImport = async (newOrders: BulkImportedOrder[]) => {
     try {
       for (const order of newOrders) {
         await addOrder({
           ...order,
           status: 'Pendiente',
           time: 'Ahora',
-          color: 'bg-slate-100 text-slate-700'
+          color: 'bg-slate-100 text-slate-700',
         });
       }
       showToast(`${newOrders.length} pedidos importados con éxito`);
-    } catch (err) {
+    } catch {
       showToast('Error en la importación masiva', 'error');
     }
   };
@@ -80,18 +90,23 @@ const App: React.FC = () => {
     try {
       await sendAlert(id);
       showToast('Alerta de WhatsApp enviada');
-    } catch (err) {
+    } catch {
       showToast('Error al enviar alerta', 'error');
     }
   };
 
-  const handlePodSubmit = async (data: any) => {
+  const handlePodSubmit = async (data: PodProof) => {
     if (podModal.orderId) {
       try {
-        await updateOrder(podModal.orderId, { status: 'Entregado', color: 'bg-emerald-100 text-emerald-700' });
+        await updateOrder(podModal.orderId, {
+          status: 'Entregado',
+          color: 'bg-emerald-100 text-emerald-700',
+          time: 'Ahora',
+          pod: data,
+        });
         setPodModal({ isOpen: false, orderId: null });
-        showToast('Entrega confirmada con éxito');
-      } catch (err) {
+        showToast(`Entrega confirmada con evidencia para ${data.recipientName}`);
+      } catch {
         showToast('Error al confirmar entrega', 'error');
       }
     }
@@ -109,9 +124,9 @@ const App: React.FC = () => {
     switch (activeTab) {
       case 'dashboard':
         return (
-          <Dashboard 
-            orders={orders} 
-            drivers={drivers} 
+          <Dashboard
+            orders={orders}
+            drivers={drivers}
             onNewOrder={() => setIsNewOrderModalOpen(true)}
             onViewAllOrders={() => setActiveTab('pedidos')}
             onViewRoutes={() => setActiveTab('rutas')}
@@ -119,12 +134,12 @@ const App: React.FC = () => {
         );
       case 'pedidos':
         return (
-          <Orders 
-            orders={orders} 
+          <Orders
+            orders={orders}
             onNewOrder={() => setIsNewOrderModalOpen(true)}
             onSendAlert={handleSendAlert}
             onViewDetail={(id) => {
-              const order = orders.find(o => o.id === id);
+              const order = orders.find((currentOrder) => currentOrder.id === id);
               if (order?.status === 'En Ruta') {
                 setPodModal({ isOpen: true, orderId: id });
               } else {
@@ -142,10 +157,10 @@ const App: React.FC = () => {
         );
       case 'rutas':
         return (
-          <Routes 
-            routes={routes} 
-            drivers={drivers} 
-            orders={orders} 
+          <Routes
+            routes={routes}
+            drivers={drivers}
+            orders={orders}
             trackedOrderId={trackedOrderId}
             setTrackedOrderId={setTrackedOrderId}
             isMapVisible={isMapVisible}
@@ -168,16 +183,13 @@ const App: React.FC = () => {
 
   return (
     <div className="flex h-screen bg-slate-50 font-sans overflow-hidden">
-      <Sidebar 
-        activeTab={activeTab} 
-        setActiveTab={setActiveTab} 
-        onBackToPlan={() => setView('plan')} 
-      />
+      <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} onBackToPlan={() => setView('plan')} />
 
       <main className="flex-1 flex flex-col overflow-hidden">
         <Header />
-        
+
         <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
+
           <AnimatePresence mode="wait">
             <motion.div
               key={activeTab}
@@ -192,23 +204,18 @@ const App: React.FC = () => {
         </div>
       </main>
 
-      <NewOrderModal 
-        isOpen={isNewOrderModalOpen} 
-        onClose={() => setIsNewOrderModalOpen(false)} 
-        onSubmit={handleAddOrder}
-      />
+      <NewOrderModal isOpen={isNewOrderModalOpen} onClose={() => setIsNewOrderModalOpen(false)} onSubmit={handleAddOrder} />
 
-      <PodModal 
+      <PodModal
         isOpen={podModal.isOpen}
         orderId={podModal.orderId}
         onClose={() => setPodModal({ isOpen: false, orderId: null })}
         onSubmit={handlePodSubmit}
       />
 
-      {/* Toast Notification */}
       <AnimatePresence>
         {toast && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: 50 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 50 }}
@@ -223,9 +230,9 @@ const App: React.FC = () => {
       </AnimatePresence>
 
       {error && (
-        <div className="fixed top-4 right-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded z-[3000]">
-          <strong className="font-bold">Error: </strong>
-          <span className="block sm:inline">{error}</span>
+        <div className="fixed top-8 right-8 bg-red-600 text-white px-6 py-4 rounded-2xl shadow-2xl z-[2000] max-w-md">
+          <div className="font-bold text-sm mb-1">Error de conexión</div>
+          <div className="text-xs text-red-100">{error}</div>
         </div>
       )}
     </div>
