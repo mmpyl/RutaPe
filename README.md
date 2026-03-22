@@ -1,6 +1,4 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+
 
 # RutaPe
 
@@ -62,6 +60,28 @@ npm run lint
 npm run build
 ```
 
+
+## Uso desde VS Code
+
+1. Abre la carpeta del proyecto en VS Code.
+2. Ejecuta la tarea **`RutaPe: install`** si aún no instalaste dependencias.
+3. Presiona `F5` y selecciona **`RutaPe: Dev Server`**.
+4. VS Code levantará `npm run dev` y abrirá automáticamente `http://localhost:3000` cuando el servidor esté listo.
+
+También quedan disponibles estas tareas en **Terminal > Run Task**:
+
+- `RutaPe: install`
+- `RutaPe: dev`
+- `RutaPe: lint`
+- `RutaPe: build`
+
+### Archivos agregados para VS Code
+
+- `.vscode/launch.json`: arranque y depuración local.
+- `.vscode/tasks.json`: tareas comunes del proyecto.
+- `.vscode/settings.json`: oculta `.rutape-data` para no ensuciar el explorador.
+- `.vscode/extensions.json`: recomendaciones básicas para trabajar el proyecto.
+
 ## Notas importantes
 
 - El estado operativo ya no vive solo en memoria: el backend persiste pedidos, conductores y rutas en `.rutape-data/logistics-state.json` para reducir retrabajo entre reinicios del servidor.
@@ -88,3 +108,8 @@ Estas mejoras ofrecen más retorno que abrir nuevos canales de despliegue antes 
 
 - La persistencia implementada es intencionalmente simple: un repositorio en disco basado en JSON para acelerar validación funcional y reducir retrabajo del MVP.
 - El siguiente salto recomendado sigue siendo migrar esta capa a repositorios desacoplados con una base de datos real y storage para POD.
+
+
+## Documento de rediseño de producto
+
+Para el blueprint completo de RutaPe como agregador logístico SaaS/marketplace, revisa `docs/rutape-saas-platform-blueprint.md`.
