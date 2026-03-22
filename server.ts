@@ -4,6 +4,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { WebSocketServer, WebSocket } from "ws";
 import { createServer } from "http";
+import { randomUUID } from "crypto";
 import { Driver, Order, Route } from "./src/types.js";
 import { FileLogisticsStateRepository } from "./server/repositories/logisticsStateRepository.js";
 import { synchronizeRoutesAndDrivers } from "./server/services/routeState.js";
@@ -11,6 +12,12 @@ import { createApiRouter } from "./server/http/apiRouter.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+
+const logEvent = (level: 'info' | 'error', event: string, meta: Record<string, unknown> = {}) => {
+  const logger = level === 'error' ? console.error : console.log;
+  logger(JSON.stringify({ level, event, ...meta }));
+};
 
 type LogisticsSocketEvent =
   | { type: "INIT"; data: { orders: Order[]; drivers: Driver[]; routes: Route[] } }
@@ -28,6 +35,24 @@ async function startServer() {
 
   app.use(express.json());
 
+  app.use((req, res, next) => {
+    const requestId = randomUUID();
+    const startedAt = Date.now();
+    res.setHeader('X-Request-Id', requestId);
+
+    res.on('finish', () => {
+      logEvent('info', 'http_request', {
+        requestId,
+        method: req.method,
+        path: req.originalUrl,
+        statusCode: res.statusCode,
+        durationMs: Date.now() - startedAt,
+      });
+    });
+
+    next();
+  });
+
   const initialState = await repository.read();
   let orders: Order[] = initialState.orders;
   let drivers: Driver[] = initialState.drivers;
@@ -36,6 +61,16 @@ async function startServer() {
   const persistState = async () => {
     await repository.write({ orders, drivers, routes });
   };
+
+  app.get('/health', (_req, res) => {
+    res.json({
+      status: 'ok',
+      mode: isProduction ? 'production' : 'development',
+      orders: orders.length,
+      drivers: drivers.length,
+      routes: routes.length,
+    });
+  });
 
   const wss = new WebSocketServer({ server });
 
@@ -58,7 +93,7 @@ async function startServer() {
   };
 
   wss.on("connection", (ws) => {
-    console.log("Client connected to WebSocket");
+    logEvent('info', 'ws_connected', { clients: wss.clients.size + 1 });
     ws.send(JSON.stringify({ type: "INIT", data: { orders, drivers, routes } }));
   });
 
@@ -111,7 +146,7 @@ async function startServer() {
 
   server.listen(PORT, HOST, () => {
     const runtimeMode = isProduction ? "production" : "development";
-    console.log(`Server running in ${runtimeMode} mode on http://localhost:${PORT}`);
+    logEvent('info', 'server_started', { mode: runtimeMode, host: HOST, port: PORT, url: `http://localhost:${PORT}` });
   });
 }
 

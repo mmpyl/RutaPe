@@ -16,7 +16,7 @@
         "<node_internals>/**"
       ],
       "serverReadyAction": {
-        "pattern": "Server running in .+ mode on http://localhost:(\\d+)",
+        "pattern": "\"event\":\"server_started\".*\"url\":\"http://localhost:(\\d+)\"",
         "uriFormat": "http://localhost:%s",
         "action": "openExternally"
       }
@@ -51,7 +51,7 @@
         "<node_internals>/**"
       ],
       "serverReadyAction": {
-        "pattern": "Server running in .+ mode on http://localhost:(\\d+)",
+        "pattern": "\"event\":\"server_started\".*\"url\":\"http://localhost:(\\d+)\"",
         "uriFormat": "http://localhost:%s",
         "action": "openExternally"
       }

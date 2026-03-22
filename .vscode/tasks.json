@@ -36,7 +36,7 @@
         "background": {
           "activeOnStart": true,
           "beginsPattern": ".+",
-          "endsPattern": "Server running in .+ mode on http://localhost:\\d+"
+          "endsPattern": "\"event\":\"server_started\".*\"url\":\"http://localhost:\\d+\""
         }
       }
     },
@@ -90,7 +90,7 @@
         "background": {
           "activeOnStart": true,
           "beginsPattern": ".+",
-          "endsPattern": "Server running in .+ mode on http://localhost:\\d+"
+          "endsPattern": "\"event\":\"server_started\".*\"url\":\"http://localhost:\\d+\""
         }
       }
     }

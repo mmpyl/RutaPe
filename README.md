@@ -138,4 +138,8 @@ Este comando levanta el servidor Express y, en modo desarrollo, monta Vite como 
 3. Para desarrollo usa la tarea **RutaPe: dev** o el launch **RutaPe: Dev Server**.
 4. Para probar el build local usa primero **RutaPe: Build** y luego la tarea **RutaPe: start** o el launch **RutaPe: Start (prod)**.
 
-Las configuraciones de VS Code quedan alineadas con el log actual del servidor (`Server running in ... mode on http://localhost:PORT`) para que `serverReadyAction` detecte correctamente cuándo abrir la aplicación.
+Las configuraciones de VS Code quedan alineadas con el log estructurado de arranque del servidor (`{"event":"server_started", ...}`) para que `serverReadyAction` detecte correctamente cuándo abrir la aplicación.
+
+### Healthcheck operativo
+
+Una vez levantado el proyecto, puedes verificar rápidamente el backend en `http://localhost:3000/health`. El endpoint devuelve estado, modo de ejecución y conteos básicos de órdenes, conductores y rutas.
