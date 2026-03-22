@@ -146,11 +146,7 @@ async function startServer() {
     }
   });
 
-  app.post("/api/whatsapp/alert", (req, res) => {
-    const { orderId } = req.body;
-    console.log(`Simulating WhatsApp alert for order ${orderId}`);
-    res.json({ success: true, message: `Alert sent for order ${orderId}` });
-  });
+  app.use('/api', createApiRouter(ordersService, routesService, getDrivers));
 
   if (!isProduction) {
     const { createServer: createViteServer } = await import("vite");
