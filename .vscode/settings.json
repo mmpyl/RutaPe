@@ -1,0 +1,5 @@
+{
+  "files.exclude": {
+    ".rutape-data": true
+  }
+}

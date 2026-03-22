@@ -1,12 +1,19 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, FileText, Upload, CheckCircle2, AlertCircle } from 'lucide-react';
+import { X, Upload, CheckCircle2, AlertCircle } from 'lucide-react';
+import { BulkImportedOrder } from '../../types';
 
 interface BulkImportModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onImport: (orders: any[]) => void;
+  onImport: (orders: BulkImportedOrder[]) => void;
 }
+
+const MOCK_PARSED_ORDERS: BulkImportedOrder[] = [
+  { client: 'Tienda Ripley S.A.', address: 'Av. Javier Prado 450, San Isidro', items: 3, value: 450.5 },
+  { client: 'Saga Falabella', address: 'Calle Las Begonias 12, San Isidro', items: 1, value: 120 },
+  { client: 'Mercado Libre Perú', address: 'Av. El Derby 250, Santiago de Surco', items: 5, value: 890 },
+];
 
 const BulkImportModal: React.FC<BulkImportModalProps> = ({ isOpen, onClose, onImport }) => {
   const [step, setStep] = useState<'upload' | 'preview'>('upload');
@@ -14,14 +21,8 @@ const BulkImportModal: React.FC<BulkImportModalProps> = ({ isOpen, onClose, onIm
 
   if (!isOpen) return null;
 
-  const mockParsedOrders = [
-    { client: 'Tienda Ripley S.A.', address: 'Av. Javier Prado 450, San Isidro', items: 3, value: 450.50 },
-    { client: 'Saga Falabella', address: 'Calle Las Begonias 12, San Isidro', items: 1, value: 120.00 },
-    { client: 'Mercado Libre Perú', address: 'Av. El Derby 250, Santiago de Surco', items: 5, value: 890.00 },
-  ];
-
-  const handleFileDrop = (e: React.DragEvent) => {
-    e.preventDefault();
+  const handleFileDrop = (event: React.DragEvent) => {
+    event.preventDefault();
     setIsDragging(false);
     setStep('preview');
   };
@@ -29,7 +30,7 @@ const BulkImportModal: React.FC<BulkImportModalProps> = ({ isOpen, onClose, onIm
   return (
     <AnimatePresence>
       <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[1000] flex items-center justify-center p-4">
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, scale: 0.9, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.9, y: 20 }}
@@ -48,8 +49,11 @@ const BulkImportModal: React.FC<BulkImportModalProps> = ({ isOpen, onClose, onIm
 
             {step === 'upload' ? (
               <div className="space-y-8">
-                <div 
-                  onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+                <div
+                  onDragOver={(event) => {
+                    event.preventDefault();
+                    setIsDragging(true);
+                  }}
                   onDragLeave={() => setIsDragging(false)}
                   onDrop={handleFileDrop}
                   className={`w-full py-20 border-2 border-dashed rounded-[40px] flex flex-col items-center justify-center gap-4 transition-all cursor-pointer ${
@@ -81,7 +85,7 @@ const BulkImportModal: React.FC<BulkImportModalProps> = ({ isOpen, onClose, onIm
             ) : (
               <div className="space-y-8">
                 <div className="space-y-4">
-                  <div className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">Vista Previa ({mockParsedOrders.length} pedidos detectados)</div>
+                  <div className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">Vista Previa ({MOCK_PARSED_ORDERS.length} pedidos detectados)</div>
                   <div className="bg-slate-50 rounded-3xl overflow-hidden border border-slate-100">
                     <table className="w-full text-left text-xs">
                       <thead className="bg-slate-100 text-slate-500 font-bold uppercase tracking-widest">
@@ -92,8 +96,8 @@ const BulkImportModal: React.FC<BulkImportModalProps> = ({ isOpen, onClose, onIm
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
-                        {mockParsedOrders.map((order, i) => (
-                          <tr key={i} className="text-slate-600">
+                        {MOCK_PARSED_ORDERS.map((order, index) => (
+                          <tr key={`${order.client}-${index}`} className="text-slate-600">
                             <td className="px-6 py-4 font-bold">{order.client}</td>
                             <td className="px-6 py-4">{order.address}</td>
                             <td className="px-6 py-4 font-mono">S/ {order.value.toFixed(2)}</td>
@@ -105,14 +109,14 @@ const BulkImportModal: React.FC<BulkImportModalProps> = ({ isOpen, onClose, onIm
                 </div>
 
                 <div className="flex gap-4">
-                  <button 
+                  <button
                     onClick={() => setStep('upload')}
                     className="flex-1 py-5 rounded-2xl font-bold text-sm border-2 border-slate-100 text-slate-500 hover:bg-slate-50 transition-all"
                   >
                     Volver a Cargar
                   </button>
-                  <button 
-                    onClick={() => onImport(mockParsedOrders)}
+                  <button
+                    onClick={() => onImport(MOCK_PARSED_ORDERS)}
                     className="flex-[2] bg-emerald-600 text-white py-5 rounded-2xl font-bold text-sm shadow-xl shadow-emerald-100 hover:bg-emerald-700 transition-all flex items-center justify-center gap-2"
                   >
                     <CheckCircle2 size={18} /> Confirmar Importación
