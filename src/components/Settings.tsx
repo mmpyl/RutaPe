@@ -10,6 +10,8 @@ import {
   Webhook,
   Zap,
 } from 'lucide-react';
+import { isBrowserDataMode } from '../shared/config/dataMode';
+import { resetBrowserDemoState } from '../shared/demo/store';
 
 const integrationStats = [
   { icon: Zap, label: 'Uptime API', value: '99.9%', iconClassName: 'text-emerald-400', valueClassName: 'text-white' },
@@ -86,6 +88,7 @@ const Settings: React.FC = () => {
                 ))}
               </div>
             </div>
+          </div>
 
             <div className="flex items-center justify-between gap-4 border-t border-slate-50 pt-6">
               <p className="max-w-md text-xs leading-relaxed text-slate-400">
@@ -109,6 +112,11 @@ const Settings: React.FC = () => {
                 <p className="text-sm text-slate-400">Recibe notificaciones en tiempo real en tu servidor.</p>
               </div>
             </div>
+            <div>
+              <h3 className="text-xl font-bold text-slate-900">Webhooks</h3>
+              <p className="text-sm text-slate-400">Recibe notificaciones en tiempo real en tu servidor.</p>
+            </div>
+          </div>
 
             <div className="space-y-6">
               <div className="flex items-center justify-between rounded-3xl border border-slate-100 bg-slate-50 p-6">

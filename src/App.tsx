@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { Wifi, WifiOff } from 'lucide-react';
 import { useApi } from './hooks/useApi';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
@@ -39,11 +40,7 @@ const App: React.FC = () => {
   } = useApi();
 
   useEffect(() => {
-    if (view === 'demo') {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'auto';
-    }
+    document.body.style.overflow = view === 'demo' ? 'hidden' : 'auto';
   }, [view]);
 
   useEffect(() => () => {
@@ -116,7 +113,7 @@ const App: React.FC = () => {
     if (loading && orders.length === 0) {
       return (
         <div className="flex items-center justify-center h-full">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500" />
         </div>
       );
     }
@@ -223,7 +220,11 @@ const App: React.FC = () => {
               toast.type === 'success' ? 'bg-slate-900 text-white' : 'bg-red-600 text-white'
             }`}
           >
-            <div className={`w-2 h-2 rounded-full ${toast.type === 'success' ? 'bg-emerald-500' : 'bg-white'}`} />
+            <div
+              className={`w-2 h-2 rounded-full ${
+                toast.type === 'success' ? 'bg-emerald-500' : 'bg-white'
+              }`}
+            />
             {toast.message}
           </motion.div>
         )}

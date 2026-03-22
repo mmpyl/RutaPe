@@ -43,7 +43,7 @@ export const useApi = (): UseApiReturn => {
       setRoutes(snapshot.routes);
       setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
+      setError(err instanceof Error ? err.message : 'Error al cargar datos');
     } finally {
       setLoading(false);
     }
@@ -86,7 +86,8 @@ export const useApi = (): UseApiReturn => {
       setError(null);
       return newOrder;
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
+      const message = err instanceof Error ? err.message : 'Error al crear pedido';
+      setError(message);
       throw err;
     }
   }, [browserMode]);
@@ -100,7 +101,8 @@ export const useApi = (): UseApiReturn => {
       setError(null);
       return updatedOrder;
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
+      const message = err instanceof Error ? err.message : 'Error al actualizar pedido';
+      setError(message);
       throw err;
     }
   }, [browserMode]);
@@ -111,7 +113,8 @@ export const useApi = (): UseApiReturn => {
       setError(null);
       return response;
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
+      const message = err instanceof Error ? err.message : 'Error al enviar alerta';
+      setError(message);
       throw err;
     }
   }, []);
@@ -129,7 +132,8 @@ export const useApi = (): UseApiReturn => {
       setError(null);
       return data;
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
+      const message = err instanceof Error ? err.message : 'Error al optimizar rutas';
+      setError(message);
       throw err;
     } finally {
       setLoading(false);
