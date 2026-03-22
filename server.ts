@@ -6,9 +6,8 @@ import { WebSocketServer, WebSocket } from "ws";
 import { createServer } from "http";
 import { Driver, Order, Route } from "./src/types.js";
 import { FileLogisticsStateRepository } from "./server/repositories/logisticsStateRepository.js";
-import { optimizePendingRoutes } from "./server/services/routeOptimization.js";
 import { synchronizeRoutesAndDrivers } from "./server/services/routeState.js";
-import { buildOrderPayload, validateCreateOrderPayload, validateOrderPatchPayload } from "./server/validation/orders.js";
+import { createApiRouter } from "./server/routes/api.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -75,78 +74,24 @@ async function startServer() {
     broadcast({ type: "DRIVER_UPDATE", data: drivers });
   }, 3000);
 
-  app.get("/api/orders", (_req, res) => {
-    res.json(orders);
-  });
-
-  app.post("/api/orders", async (req, res) => {
-    const validationError = validateCreateOrderPayload(req.body);
-    if (validationError) {
-      return res.status(400).json({ error: validationError });
-    }
-
-    const payload = req.body as Record<string, unknown>;
-    const newOrder: Order = {
-      ...(buildOrderPayload(payload) as Order),
-      id: (Math.floor(Math.random() * 1000) + 4100).toString(),
-      carrier: payload.carrier ? String(payload.carrier).trim() : "Flota Propia",
-      carrierLogo: payload.carrierLogo ? String(payload.carrierLogo).trim() : "FP",
-    };
-
-    orders = [newOrder, ...orders];
-    await persistState();
-    broadcast({ type: "ORDER_UPDATE", data: orders });
-    return res.status(201).json(newOrder);
-  });
-
-  app.patch("/api/orders/:id", async (req, res) => {
-    const { id } = req.params;
-    const existingOrder = orders.find((order) => order.id === id);
-
-    if (!existingOrder) {
-      return res.status(404).json({ error: "Pedido no encontrado" });
-    }
-
-    const validationError = validateOrderPatchPayload(req.body);
-    if (validationError) {
-      return res.status(400).json({ error: validationError });
-    }
-
-    const updatedOrder = buildOrderPayload(req.body as Record<string, unknown>, existingOrder) as Order;
-    orders = orders.map((order) => (order.id === id ? updatedOrder : order));
-    syncRouteState();
-    await persistState();
-
-    broadcast({ type: "ORDER_UPDATE", data: orders });
-    broadcast({ type: "ROUTE_UPDATE", data: routes });
-    broadcast({ type: "DRIVER_UPDATE", data: drivers });
-    return res.json(updatedOrder);
-  });
-
-  app.get("/api/drivers", (_req, res) => {
-    res.json(drivers);
-  });
-
-  app.get("/api/routes", (_req, res) => {
-    res.json(routes);
-  });
-
-  app.post("/api/routes/optimize", async (_req, res) => {
-    try {
-      const result = optimizePendingRoutes(orders, drivers, routes);
-      orders = result.orders;
-      drivers = result.drivers;
-      routes = result.routes;
-      await persistState();
-      broadcastSnapshot();
-      return res.json({ message: result.message, routes });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'No se pudo optimizar las rutas';
-      return res.status(400).json({ error: message });
-    }
-  });
-
-  app.use('/api', createApiRouter(ordersService, routesService, getDrivers));
+  app.use('/api', createApiRouter({
+    getOrders: () => orders,
+    getDrivers: () => drivers,
+    getRoutes: () => routes,
+    setOrders: (nextOrders) => {
+      orders = nextOrders;
+    },
+    setDrivers: (nextDrivers) => {
+      drivers = nextDrivers;
+    },
+    setRoutes: (nextRoutes) => {
+      routes = nextRoutes;
+    },
+    persistState,
+    syncRouteState,
+    broadcast,
+    broadcastSnapshot,
+  }));
 
   if (!isProduction) {
     const { createServer: createViteServer } = await import("vite");
