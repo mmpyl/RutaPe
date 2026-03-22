@@ -1,222 +1,123 @@
-import { Driver, LogisticsSnapshot, Order, Route, RouteOptimizationResponse } from '../../types';
-import { createDemoDrivers, createDemoOrders, createDemoRoutes } from './mockData';
+import { Order, Driver, Route, RouteOptimizationResponse } from '../../types';
+import { LogisticsSnapshot } from '../api/logistics';
+import { isLogisticsSnapshot } from '../contracts/guards';
 
-const STORAGE_KEY = 'rutape-browser-state-v1';
-const CLOSED_ORDER_STATUSES = new Set<Order['status']>(['Entregado', 'Cancelado']);
-const ORDER_COLORS: Record<Order['status'], string> = {
-  Pendiente: 'bg-slate-100 text-slate-700',
-  'En Ruta': 'bg-blue-100 text-blue-700',
-  Entregado: 'bg-emerald-100 text-emerald-700',
-  Retrasado: 'bg-red-100 text-red-700',
-  Cancelado: 'bg-slate-200 text-slate-700',
-};
+const BROWSER_STATE_KEY = 'rutape-browser-state-v1';
 
-interface BrowserState {
-  orders: Order[];
-  drivers: Driver[];
-  routes: Route[];
-}
-
-const clone = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
-
-const createInitialState = (): BrowserState => ({
-  orders: createDemoOrders(),
-  drivers: createDemoDrivers(),
-  routes: createDemoRoutes(),
+const createBrowserSnapshot = (): LogisticsSnapshot => ({
+  orders: [
+    { id: '4021', status: 'Entregado', time: 'Hace 2 min', client: 'Juan Pérez', address: 'Av. Larco 123, Miraflores', color: 'bg-emerald-100 text-emerald-700', items: 3, value: 150.5, driverId: 'D1', carrier: 'Shalom', carrierLogo: 'SH', lat: -12.1221, lng: -77.0298 },
+    { id: '4022', status: 'En Ruta', time: 'Hace 15 min', client: 'María García', address: 'Calle Las Flores 456, San Isidro', color: 'bg-blue-100 text-blue-700', items: 1, value: 45, driverId: 'D1', carrier: 'Shalom', carrierLogo: 'SH', lat: -12.0945, lng: -77.0356 },
+    { id: '4023', status: 'Retrasado', time: 'Hace 1 hr', client: 'Carlos Torres', address: 'Jr. Puno 789, Cercado', color: 'bg-red-100 text-red-700', items: 5, value: 320, driverId: 'D3', carrier: 'Urbano', carrierLogo: 'UR', lat: -12.0464, lng: -77.0297 },
+    { id: '4024', status: 'Pendiente', time: 'Hace 2 hr', client: 'Ana Loli', address: 'Av. Universitaria 101, SMP', color: 'bg-slate-100 text-slate-700', items: 2, value: 89.9, lat: -11.9912, lng: -77.0823 },
+    { id: '4025', status: 'Pendiente', time: 'Hace 3 hr', client: 'Roberto Díaz', address: 'Av. Javier Prado 1500, San Borja', color: 'bg-slate-100 text-slate-700', items: 4, value: 210, lat: -12.0854, lng: -77.0012 },
+    { id: '4026', status: 'En Ruta', time: 'Hace 30 min', client: 'Elena Paz', address: 'Av. Arequipa 2400, Lince', color: 'bg-blue-100 text-blue-700', items: 2, value: 120, driverId: 'D2', carrier: 'Marvi', carrierLogo: 'MV', lat: -12.0823, lng: -77.0345 },
+  ],
+  drivers: [
+    { id: 'D1', name: 'Carlos Mendoza', status: 'En Ruta', orders: 5, efficiency: 98, avatar: 'CM', vehicle: 'Camioneta NHR', phone: '987654321', carrier: 'Shalom', carrierLogo: 'SH', lat: -12.1, lng: -77.03 },
+    { id: 'D2', name: 'Luis Paredes', status: 'En Ruta', orders: 3, efficiency: 95, avatar: 'LP', vehicle: 'Moto Cargo', phone: '912345678', carrier: 'Marvi', carrierLogo: 'MV', lat: -12.08, lng: -77.035 },
+    { id: 'D3', name: 'Jorge Ruiz', status: 'En Ruta', orders: 3, efficiency: 92, avatar: 'JR', vehicle: 'Furgón H100', phone: '955443322', carrier: 'Urbano', carrierLogo: 'UR', lat: -12.05, lng: -77.03 },
+    { id: 'D4', name: 'Ana Belén', status: 'Disponible', orders: 0, efficiency: 99, avatar: 'AB', vehicle: 'Camioneta NHR', phone: '944332211', carrier: 'Shalom', carrierLogo: 'SH', lat: -12.12, lng: -77.02 },
+  ],
+  routes: [
+    { id: 'R1', driverId: 'D1', stops: ['4021', '4022'], status: 'Activa', progress: 50 },
+    { id: 'R2', driverId: 'D2', stops: ['4026'], status: 'Activa', progress: 30 },
+    { id: 'R3', driverId: 'D3', stops: ['4023'], status: 'Activa', progress: 10 },
+  ],
 });
 
-const readState = (): BrowserState => {
-  if (typeof window === 'undefined') {
-    return createInitialState();
-  }
-
-  const raw = window.localStorage.getItem(STORAGE_KEY);
+export const readBrowserState = (): LogisticsSnapshot => {
+  const raw = window.localStorage.getItem(BROWSER_STATE_KEY);
   if (!raw) {
-    const seed = createInitialState();
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(seed));
+    const seed = createBrowserSnapshot();
+    window.localStorage.setItem(BROWSER_STATE_KEY, JSON.stringify(seed));
     return seed;
   }
 
   try {
-    const parsed = JSON.parse(raw) as BrowserState;
-    if (!Array.isArray(parsed.orders) || !Array.isArray(parsed.drivers) || !Array.isArray(parsed.routes)) {
-      throw new Error('Invalid demo state');
+    const parsed = JSON.parse(raw) as unknown;
+    if (isLogisticsSnapshot(parsed)) {
+      return parsed;
     }
-    return parsed;
   } catch {
-    const seed = createInitialState();
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(seed));
-    return seed;
-  }
-};
-
-const writeState = (state: BrowserState) => {
-  if (typeof window !== 'undefined') {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  }
-};
-
-const synchronizeRoutesAndDrivers = (routes: Route[], orders: Order[], drivers: Driver[]) => {
-  const orderMap = new Map(orders.map((order) => [order.id, order]));
-
-  const nextRoutes = routes.map((route) => {
-    const existingStops = route.stops.filter((stopId) => orderMap.has(stopId));
-    const completedStops = existingStops.filter((stopId) => {
-      const order = orderMap.get(stopId);
-      return order ? CLOSED_ORDER_STATUSES.has(order.status) : false;
-    }).length;
-    const hasOpenStops = existingStops.some((stopId) => {
-      const order = orderMap.get(stopId);
-      return order ? !CLOSED_ORDER_STATUSES.has(order.status) : false;
-    });
-
-    return {
-      ...route,
-      stops: existingStops,
-      progress: existingStops.length === 0 ? 0 : Math.round((completedStops / existingStops.length) * 100),
-      status: existingStops.length === 0 ? 'Programada' : hasOpenStops ? 'Activa' : 'Completada',
-    } satisfies Route;
-  });
-
-  const nextDrivers = drivers.map((driver) => {
-    const activeRoute = nextRoutes.some((route) => route.driverId === driver.id && route.status === 'Activa');
-    const completedRoute = nextRoutes.some((route) => route.driverId === driver.id && route.status === 'Completada');
-
-    if (activeRoute) {
-      return { ...driver, status: 'En Ruta' as const };
-    }
-
-    if (completedRoute && driver.status === 'En Ruta') {
-      return { ...driver, status: 'Disponible' as const };
-    }
-
-    return driver;
-  });
-
-  return {
-    routes: nextRoutes,
-    drivers: nextDrivers,
-  };
-};
-
-const optimizeBrowserRoutes = (state: BrowserState): RouteOptimizationResponse => {
-  const nextState = clone(state);
-  const pendingOrders = nextState.orders.filter((order) => order.status === 'Pendiente');
-  if (pendingOrders.length === 0) {
-    return { message: 'No hay pedidos pendientes para optimizar', routes: nextState.routes };
+    // ignore and restore seed below
   }
 
-  const availableDrivers = nextState.drivers.filter((driver) => driver.status === 'Disponible' || driver.status === 'En Ruta');
-  if (availableDrivers.length === 0) {
-    throw new Error('No hay conductores disponibles');
-  }
-
-  const getDist = (lat1: number, lng1: number, lat2: number, lng2: number) =>
-    Math.sqrt((lat2 - lat1) ** 2 + (lng2 - lng1) ** 2);
-
-  pendingOrders.forEach((order) => {
-    let bestDriver: Driver | null = null;
-    let minCost = Infinity;
-
-    availableDrivers.forEach((driver) => {
-      const route = nextState.routes.find((currentRoute) => currentRoute.driverId === driver.id && currentRoute.status === 'Activa');
-      const dist = getDist(driver.lat ?? -12.1, driver.lng ?? -77.03, order.lat ?? -12.1, order.lng ?? -77.03);
-      const cost = dist + (route?.stops.length ?? 0) * 0.005;
-
-      if (cost < minCost) {
-        minCost = cost;
-        bestDriver = driver;
-      }
-    });
-
-    if (!bestDriver) return;
-
-    order.driverId = bestDriver.id;
-    order.status = 'En Ruta';
-    order.color = ORDER_COLORS['En Ruta'];
-
-    let route = nextState.routes.find((currentRoute) => currentRoute.driverId === bestDriver!.id && currentRoute.status === 'Activa');
-    if (!route) {
-      route = {
-        id: `R${Math.floor(Math.random() * 1000)}`,
-        driverId: bestDriver.id,
-        stops: [],
-        status: 'Activa',
-        progress: 0,
-      };
-      nextState.routes.push(route);
-    }
-
-    route.stops.push(order.id);
-  });
-
-  const synced = synchronizeRoutesAndDrivers(nextState.routes, nextState.orders, nextState.drivers);
-  nextState.routes = synced.routes;
-  nextState.drivers = synced.drivers;
-  writeState(nextState);
-  return { message: 'Rutas optimizadas con éxito', routes: nextState.routes };
+  const seed = createBrowserSnapshot();
+  window.localStorage.setItem(BROWSER_STATE_KEY, JSON.stringify(seed));
+  return seed;
 };
 
-export const fetchBrowserSnapshot = async (): Promise<LogisticsSnapshot> => {
-  const state = readState();
-  return clone(state);
+export const writeBrowserState = (snapshot: LogisticsSnapshot) => {
+  window.localStorage.setItem(BROWSER_STATE_KEY, JSON.stringify(snapshot));
 };
 
-export const createBrowserOrder = async (order: Partial<Order>): Promise<Order> => {
-  const state = readState();
-  const status = order.status ?? 'Pendiente';
+export const createBrowserOrder = (snapshot: LogisticsSnapshot, order: Partial<Order>): Order => {
   const newOrder: Order = {
-    id: String(Date.now()),
-    client: order.client?.trim() || 'Nuevo cliente',
-    address: order.address?.trim() || 'Dirección pendiente',
+    id: (Math.floor(Math.random() * 1000) + 4100).toString(),
+    status: order.status ?? 'Pendiente',
+    time: order.time ?? 'Ahora',
+    client: order.client ?? 'Cliente demo',
+    address: order.address ?? 'Dirección demo',
+    color: order.color ?? 'bg-slate-100 text-slate-700',
     items: order.items ?? 1,
     value: order.value ?? 0,
-    status,
-    time: order.time ?? 'Ahora',
-    color: order.color ?? ORDER_COLORS[status],
-    carrier: order.carrier?.trim() || 'Flota Propia',
-    carrierLogo: order.carrierLogo?.trim() || 'FP',
     lat: order.lat,
     lng: order.lng,
+    carrier: order.carrier ?? 'Flota Propia',
+    carrierLogo: order.carrierLogo ?? 'FP',
+    driverId: order.driverId,
+    pod: order.pod,
   };
 
-  state.orders = [newOrder, ...state.orders];
-  writeState(state);
-  return clone(newOrder);
+  writeBrowserState({ ...snapshot, orders: [newOrder, ...snapshot.orders] });
+  return newOrder;
 };
 
-export const updateBrowserOrder = async (id: string, updates: Partial<Order>): Promise<Order> => {
-  const state = readState();
-  const existingOrder = state.orders.find((order) => order.id === id);
-  if (!existingOrder) {
+export const updateBrowserOrder = (snapshot: LogisticsSnapshot, id: string, updates: Partial<Order>): Order => {
+  const nextOrders = snapshot.orders.map((order) => (order.id === id ? { ...order, ...updates } : order));
+  const updatedOrder = nextOrders.find((order) => order.id === id);
+  if (!updatedOrder) {
     throw new Error('Pedido no encontrado');
   }
-
-  const nextStatus = updates.status ?? existingOrder.status;
-  const updatedOrder: Order = {
-    ...existingOrder,
-    ...updates,
-    status: nextStatus,
-    color: updates.color ?? ORDER_COLORS[nextStatus],
-    time: updates.time ?? existingOrder.time,
-  };
-
-  state.orders = state.orders.map((order) => (order.id === id ? updatedOrder : order));
-  const synced = synchronizeRoutesAndDrivers(state.routes, state.orders, state.drivers);
-  state.routes = synced.routes;
-  state.drivers = synced.drivers;
-  writeState(state);
-  return clone(updatedOrder);
+  writeBrowserState({ ...snapshot, orders: nextOrders });
+  return updatedOrder;
 };
 
-export const sendBrowserWhatsappAlert = async (orderId: string) => ({
-  success: true,
-  message: `Alerta simulada enviada para el pedido ${orderId}`,
-});
+export const optimizeBrowserRoutes = (snapshot: LogisticsSnapshot): RouteOptimizationResponse => {
+  const nextSnapshot = structuredClone(snapshot) as LogisticsSnapshot;
+  const availableDriver = nextSnapshot.drivers.find((driver) => driver.status === 'Disponible') ?? nextSnapshot.drivers[0];
 
-export const optimizeBrowserRoutesRequest = async (): Promise<RouteOptimizationResponse> =>
-  optimizeBrowserRoutes(readState());
+  if (!availableDriver) {
+    return { message: 'No hay conductores disponibles', routes: nextSnapshot.routes };
+  }
 
-export const resetBrowserDemoState = () => {
-  writeState(createInitialState());
+  const pendingOrders = nextSnapshot.orders.filter((order) => order.status === 'Pendiente');
+  if (pendingOrders.length === 0) {
+    return { message: 'No hay pedidos pendientes para optimizar', routes: nextSnapshot.routes };
+  }
+
+  let route = nextSnapshot.routes.find((currentRoute) => currentRoute.driverId === availableDriver.id && currentRoute.status === 'Activa');
+  if (!route) {
+    route = {
+      id: `R${Math.floor(Math.random() * 1000)}`,
+      driverId: availableDriver.id,
+      stops: [],
+      status: 'Activa',
+      progress: 0,
+    };
+    nextSnapshot.routes.push(route);
+  }
+
+  pendingOrders.forEach((order) => {
+    order.status = 'En Ruta';
+    order.color = 'bg-blue-100 text-blue-700';
+    order.driverId = availableDriver.id;
+    route!.stops.push(order.id);
+  });
+
+  availableDriver.status = 'En Ruta';
+  availableDriver.orders = route.stops.length;
+  writeBrowserState(nextSnapshot);
+  return { message: 'Rutas optimizadas con éxito (browser mode)', routes: nextSnapshot.routes };
 };

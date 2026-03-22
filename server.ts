@@ -7,7 +7,7 @@ import { createServer } from "http";
 import { Driver, Order, Route } from "./src/types.js";
 import { FileLogisticsStateRepository } from "./server/repositories/logisticsStateRepository.js";
 import { synchronizeRoutesAndDrivers } from "./server/services/routeState.js";
-import { createApiRouter } from "./server/routes/api.js";
+import { createApiRouter } from "./server/http/apiRouter.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

@@ -16,12 +16,13 @@ export interface UseApiReturn {
   routes: Route[];
   loading: boolean;
   error: string | null;
-  wsStatus: 'connecting' | 'connected' | 'reconnecting';
+  wsStatus: WebSocketStatus;
+  browserMode: boolean;
   fetchData: () => Promise<void>;
   addOrder: (order: Partial<Order>) => Promise<Order>;
   updateOrder: (id: string, updates: Partial<Order>) => Promise<Order>;
   sendAlert: (orderId: string) => Promise<{ success: boolean; message: string }>;
-  optimizeRoutes: () => Promise<{ message: string; routes: Route[] }>;
+  optimizeRoutes: () => Promise<RouteOptimizationResponse>;
 }
 
 export const useApi = (): UseApiReturn => {
