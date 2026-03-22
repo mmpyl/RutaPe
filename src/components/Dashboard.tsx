@@ -60,7 +60,11 @@ const StatCard: React.FC<StatCardProps> = ({ label, value, icon: Icon, color, tr
         <Icon size={20} className={color.replace('bg-', 'text-')} />
       </div>
       {trend && (
-        <span className={`text-[10px] font-bold px-2 py-1 rounded-full ${trend.startsWith('+') ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}`}>
+        <span
+          className={`text-[10px] font-bold px-2 py-1 rounded-full ${
+            trend.startsWith('+') ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'
+          }`}
+        >
           {trend}
         </span>
       )}
@@ -69,6 +73,10 @@ const StatCard: React.FC<StatCardProps> = ({ label, value, icon: Icon, color, tr
     <div className="text-xs font-bold text-slate-400 uppercase tracking-widest">{label}</div>
   </div>
 );
+
+// ---------------------------------------------------------------------------
+// Main component
+// ---------------------------------------------------------------------------
 
 interface DashboardProps {
   orders: Order[];
@@ -90,6 +98,7 @@ const Dashboard: React.FC<DashboardProps> = ({ orders, drivers, onNewOrder, onVi
 
   return (
     <div className="space-y-8">
+      {/* Header */}
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-3xl font-bold text-slate-900">Vista General</h2>
@@ -103,6 +112,7 @@ const Dashboard: React.FC<DashboardProps> = ({ orders, drivers, onNewOrder, onVi
         </button>
       </div>
 
+      {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard label="Entregados" value={stats.entregados} icon={CheckCircle2} color="bg-emerald-600" trend="+12%" />
         <StatCard label="En Ruta" value={stats.enRuta} icon={Truck} color="bg-blue-600" />
@@ -269,7 +279,9 @@ const Dashboard: React.FC<DashboardProps> = ({ orders, drivers, onNewOrder, onVi
           <div className="absolute bottom-6 left-6 right-6 bg-white/10 backdrop-blur-md p-4 rounded-2xl border border-white/10 z-[1000]">
             <div className="flex justify-between items-center">
               <div>
-                <div className="text-white font-bold text-sm">{drivers.filter(d => d.status === 'En Ruta').length} Vehículos Activos</div>
+                <div className="text-white font-bold text-sm">
+                  {drivers.filter((d) => d.status === 'En Ruta').length} Vehículos Activos
+                </div>
                 <div className="text-white/50 text-[10px]">Actualizado en vivo</div>
               </div>
               <button
