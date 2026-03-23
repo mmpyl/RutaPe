@@ -16,7 +16,7 @@
         "<node_internals>/**"
       ],
       "serverReadyAction": {
-        "pattern": "Server running on http://localhost:(\\d+)",
+        "pattern": "\"event\":\"server_started\".*\"url\":\"http://localhost:(\\d+)\"",
         "uriFormat": "http://localhost:%s",
         "action": "openExternally"
       }
@@ -35,6 +35,26 @@
       "skipFiles": [
         "<node_internals>/**"
       ]
+    },
+    {
+      "name": "RutaPe: Start (prod)",
+      "type": "node",
+      "request": "launch",
+      "cwd": "${workspaceFolder}",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "start"
+      ],
+      "console": "integratedTerminal",
+      "skipFiles": [
+        "<node_internals>/**"
+      ],
+      "serverReadyAction": {
+        "pattern": "\"event\":\"server_started\".*\"url\":\"http://localhost:(\\d+)\"",
+        "uriFormat": "http://localhost:%s",
+        "action": "openExternally"
+      }
     }
   ]
 }

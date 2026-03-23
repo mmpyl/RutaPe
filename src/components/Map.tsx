@@ -1,16 +1,15 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { 
-  APIProvider, 
-  Map as GoogleMap, 
-  AdvancedMarker, 
-  Pin, 
-  InfoWindow, 
-  useMap, 
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  APIProvider,
+  AdvancedMarker,
+  InfoWindow,
+  Map as GoogleMap,
+  useMap,
   useMapsLibrary,
-  useAdvancedMarkerRef
 } from '@vis.gl/react-google-maps';
-import { Order, Driver } from '../types';
-import { Truck, Package, User, Navigation } from 'lucide-react';
+import { CircleMarker, MapContainer, Popup, Polyline, TileLayer, useMap as useLeafletMap } from 'react-leaflet';
+import { Driver, Order } from '../types';
+import { Package, Truck, User } from 'lucide-react';
 
 const API_KEY =
   process.env.GOOGLE_MAPS_PLATFORM_KEY ||
@@ -18,6 +17,7 @@ const API_KEY =
   (globalThis as any).GOOGLE_MAPS_PLATFORM_KEY ||
   '';
 const hasValidKey = Boolean(API_KEY) && API_KEY !== 'YOUR_API_KEY';
+const DEFAULT_CENTER = { lat: -12.0464, lng: -77.0297 };
 
 interface MapProps {
   orders: Order[];
@@ -25,132 +25,136 @@ interface MapProps {
   trackedOrderId?: string | null;
 }
 
-const MapContent: React.FC<MapProps> = ({ orders, drivers, trackedOrderId }) => {
+const TrackOrderOnGoogleMap: React.FC<MapProps> = ({ orders, trackedOrderId }) => {
   const map = useMap();
-  const routesLib = useMapsLibrary('routes');
-  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
-  const [selectedDriver, setSelectedDriver] = useState<Driver | null>(null);
-  const polylinesRef = useRef<google.maps.Polyline[]>([]);
 
-  // Track specific order
   useEffect(() => {
     if (!map || !trackedOrderId) return;
-    const order = orders.find(o => o.id === trackedOrderId);
-    if (order && order.lat && order.lng) {
+    const order = orders.find((currentOrder) => currentOrder.id === trackedOrderId);
+    if (order?.lat && order?.lng) {
       map.panTo({ lat: order.lat, lng: order.lng });
       map.setZoom(15);
-      setSelectedOrder(order);
     }
   }, [map, trackedOrderId, orders]);
 
-  // Draw routes for active drivers
+  return null;
+};
+
+const GoogleRoutesOverlay: React.FC<MapProps> = ({ orders, drivers }) => {
+  const map = useMap();
+  const routesLib = useMapsLibrary('routes');
+  const polylinesRef = useRef<google.maps.Polyline[]>([]);
+
   useEffect(() => {
     if (!routesLib || !map) return;
-    
-    // Clear existing polylines
-    polylinesRef.current.forEach(p => p.setMap(null));
+
+    polylinesRef.current.forEach((polyline) => polyline.setMap(null));
     polylinesRef.current = [];
 
-    const activeDrivers = drivers.filter(d => d.status === 'En Ruta' && d.lat && d.lng);
-    
-    activeDrivers.forEach(async (driver) => {
-      // Find the first pending or in-route order for this driver
-      const driverOrder = orders.find(o => o.driverId === driver.id && (o.status === 'En Ruta' || o.status === 'Pendiente'));
-      
-      if (driverOrder && driverOrder.lat && driverOrder.lng) {
-        try {
-          const { routes } = await (routesLib as any).Route.computeRoutes({
-            origin: { lat: driver.lat!, lng: driver.lng! },
-            destination: { lat: driverOrder.lat, lng: driverOrder.lng },
-            travelMode: 'DRIVING',
-            fields: ['path', 'viewport'],
-          });
+    const activeDrivers = drivers.filter((driver) => driver.status === 'En Ruta' && driver.lat && driver.lng);
 
-          if (routes?.[0]) {
-            const newPolylines = routes[0].createPolylines();
-            newPolylines.forEach(p => {
-              p.setOptions({
-                strokeColor: '#10b981',
-                strokeOpacity: 0.6,
-                strokeWeight: 4,
-              });
-              p.setMap(map);
-            });
-            polylinesRef.current.push(...newPolylines);
-          }
-        } catch (error) {
-          console.error('Error computing route:', error);
-        }
+    activeDrivers.forEach(async (driver) => {
+      const driverOrder = orders.find(
+        (order) => order.driverId === driver.id && (order.status === 'En Ruta' || order.status === 'Pendiente'),
+      );
+
+      if (!driverOrder?.lat || !driverOrder?.lng) return;
+
+      try {
+        const { routes } = await (routesLib as any).Route.computeRoutes({
+          origin: { lat: driver.lat!, lng: driver.lng! },
+          destination: { lat: driverOrder.lat, lng: driverOrder.lng },
+          travelMode: 'DRIVING',
+          fields: ['path', 'viewport'],
+        });
+
+        if (!routes?.[0]) return;
+
+        const newPolylines = routes[0].createPolylines();
+        newPolylines.forEach((polyline: google.maps.Polyline) => {
+          polyline.setOptions({
+            strokeColor: '#10b981',
+            strokeOpacity: 0.6,
+            strokeWeight: 4,
+          });
+          polyline.setMap(map);
+        });
+        polylinesRef.current.push(...newPolylines);
+      } catch (error) {
+        console.error('Error computing route:', error);
       }
     });
 
     return () => {
-      polylinesRef.current.forEach(p => p.setMap(null));
+      polylinesRef.current.forEach((polyline) => polyline.setMap(null));
     };
   }, [routesLib, map, drivers, orders]);
 
+  return null;
+};
+
+const GoogleMarkers: React.FC<MapProps> = ({ orders, drivers }) => {
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [selectedDriver, setSelectedDriver] = useState<Driver | null>(null);
+
   return (
     <>
-      {/* Order Markers */}
-      {orders.filter(o => o.lat && o.lng).map(order => (
-        <AdvancedMarker 
-          key={order.id} 
+      {orders.filter((order) => order.lat && order.lng).map((order) => (
+        <AdvancedMarker
+          key={order.id}
           position={{ lat: order.lat!, lng: order.lng! }}
           onClick={() => setSelectedOrder(order)}
         >
-          <div className={`p-1.5 rounded-full border-2 border-white shadow-lg ${
-            order.status === 'Entregado' ? 'bg-emerald-500' : 
-            order.status === 'En Ruta' ? 'bg-blue-500' : 
-            order.status === 'Retrasado' ? 'bg-red-500' : 'bg-slate-400'
-          }`}>
+          <div
+            className={`rounded-full border-2 border-white p-1.5 shadow-lg ${
+              order.status === 'Entregado'
+                ? 'bg-emerald-500'
+                : order.status === 'En Ruta'
+                  ? 'bg-blue-500'
+                  : order.status === 'Retrasado'
+                    ? 'bg-red-500'
+                    : 'bg-slate-400'
+            }`}
+          >
             <Package size={14} className="text-white" />
           </div>
         </AdvancedMarker>
       ))}
 
-      {/* Driver Markers */}
-      {drivers.filter(d => d.lat && d.lng).map(driver => (
-        <AdvancedMarker 
-          key={driver.id} 
+      {drivers.filter((driver) => driver.lat && driver.lng).map((driver) => (
+        <AdvancedMarker
+          key={driver.id}
           position={{ lat: driver.lat!, lng: driver.lng! }}
           onClick={() => setSelectedDriver(driver)}
         >
-          <div className="relative flex items-center justify-center group">
-            {driver.status === 'En Ruta' && (
-              <div className="absolute w-12 h-12 bg-emerald-500/20 rounded-full animate-ping" />
-            )}
-            <div className="p-2 bg-slate-900 rounded-2xl border-2 border-emerald-500 shadow-xl flex items-center gap-2 z-10 hover:scale-110 transition-transform relative">
+          <div className="group relative flex items-center justify-center">
+            {driver.status === 'En Ruta' && <div className="absolute h-12 w-12 animate-ping rounded-full bg-emerald-500/20" />}
+            <div className="relative z-10 flex items-center gap-2 rounded-2xl border-2 border-emerald-500 bg-slate-900 p-2 shadow-xl transition-transform hover:scale-110">
               {driver.carrierLogo && (
-                <div className="absolute -top-2 -right-2 w-5 h-5 bg-white border border-slate-100 rounded-md flex items-center justify-center text-[8px] font-black text-slate-900 shadow-sm">
+                <div className="absolute -right-2 -top-2 flex h-5 w-5 items-center justify-center rounded-md border border-slate-100 bg-white text-[8px] font-black text-slate-900 shadow-sm">
                   {driver.carrierLogo}
                 </div>
               )}
               <Truck size={16} className="text-emerald-500" />
-              <span className="text-[10px] font-bold text-white pr-1 whitespace-nowrap">{driver.name.split(' ')[0]}</span>
+              <span className="whitespace-nowrap pr-1 text-[10px] font-bold text-white">{driver.name.split(' ')[0]}</span>
             </div>
           </div>
         </AdvancedMarker>
       ))}
 
-      {/* Info Windows */}
       {selectedOrder && (
-        <InfoWindow 
+        <InfoWindow
           position={{ lat: selectedOrder.lat!, lng: selectedOrder.lng! }}
           onCloseClick={() => setSelectedOrder(null)}
         >
-          <div className="p-2 min-w-[200px]">
-            <div className="flex items-center gap-2 mb-2">
+          <div className="min-w-[200px] p-2">
+            <div className="mb-2 flex items-center gap-2">
               <Package size={16} className="text-slate-400" />
               <span className="font-bold text-slate-900">Pedido #{selectedOrder.id}</span>
-              {selectedOrder.carrier && (
-                <span className="ml-auto text-[8px] font-black bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">
-                  {selectedOrder.carrierLogo}
-                </span>
-              )}
             </div>
-            <div className="text-xs text-slate-600 mb-1"><strong>Cliente:</strong> {selectedOrder.client}</div>
-            <div className="text-xs text-slate-600 mb-2"><strong>Dirección:</strong> {selectedOrder.address}</div>
-            <div className={`text-[10px] font-bold px-2 py-1 rounded-full inline-block uppercase ${selectedOrder.color}`}>
+            <div className="mb-1 text-xs text-slate-600"><strong>Cliente:</strong> {selectedOrder.client}</div>
+            <div className="mb-2 text-xs text-slate-600"><strong>Dirección:</strong> {selectedOrder.address}</div>
+            <div className={`inline-block rounded-full px-2 py-1 text-[10px] font-bold uppercase ${selectedOrder.color}`}>
               {selectedOrder.status}
             </div>
           </div>
@@ -158,23 +162,18 @@ const MapContent: React.FC<MapProps> = ({ orders, drivers, trackedOrderId }) => 
       )}
 
       {selectedDriver && (
-        <InfoWindow 
+        <InfoWindow
           position={{ lat: selectedDriver.lat!, lng: selectedDriver.lng! }}
           onCloseClick={() => setSelectedDriver(null)}
         >
-          <div className="p-2 min-w-[200px]">
-            <div className="flex items-center gap-2 mb-2">
+          <div className="min-w-[200px] p-2">
+            <div className="mb-2 flex items-center gap-2">
               <User size={16} className="text-emerald-600" />
               <span className="font-bold text-slate-900">{selectedDriver.name}</span>
-              {selectedDriver.carrier && (
-                <span className="ml-auto text-[8px] font-black bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">
-                  {selectedDriver.carrierLogo}
-                </span>
-              )}
             </div>
-            <div className="text-xs text-slate-600 mb-1"><strong>Vehículo:</strong> {selectedDriver.vehicle}</div>
-            <div className="text-xs text-slate-600 mb-2"><strong>Pedidos:</strong> {selectedDriver.orders}</div>
-            <div className="text-[10px] font-bold px-2 py-1 rounded-full inline-block uppercase bg-emerald-100 text-emerald-700">
+            <div className="mb-1 text-xs text-slate-600"><strong>Vehículo:</strong> {selectedDriver.vehicle}</div>
+            <div className="mb-2 text-xs text-slate-600"><strong>Pedidos:</strong> {selectedDriver.orders}</div>
+            <div className="inline-block rounded-full bg-emerald-100 px-2 py-1 text-[10px] font-bold uppercase text-emerald-700">
               {selectedDriver.status}
             </div>
           </div>
@@ -184,44 +183,133 @@ const MapContent: React.FC<MapProps> = ({ orders, drivers, trackedOrderId }) => 
   );
 };
 
+const LeafletTracker: React.FC<MapProps> = ({ orders, trackedOrderId }) => {
+  const map = useLeafletMap();
+
+  useEffect(() => {
+    if (!trackedOrderId) return;
+    const order = orders.find((currentOrder) => currentOrder.id === trackedOrderId);
+    if (order?.lat && order?.lng) {
+      map.setView([order.lat, order.lng], 15);
+    }
+  }, [map, trackedOrderId, orders]);
+
+  return null;
+};
+
+const LeafletFallbackMap: React.FC<MapProps> = ({ orders, drivers, trackedOrderId }) => {
+  const routeSegments = useMemo(
+    () =>
+      drivers
+        .filter((driver) => driver.status === 'En Ruta' && driver.lat && driver.lng)
+        .map((driver) => {
+          const driverOrder = orders.find(
+            (order) => order.driverId === driver.id && (order.status === 'En Ruta' || order.status === 'Pendiente') && order.lat && order.lng,
+          );
+
+          if (!driverOrder?.lat || !driverOrder?.lng) {
+            return null;
+          }
+
+          return {
+            id: `${driver.id}-${driverOrder.id}`,
+            points: [
+              [driver.lat!, driver.lng!] as [number, number],
+              [driverOrder.lat, driverOrder.lng] as [number, number],
+            ],
+          };
+        })
+        .filter((segment): segment is { id: string; points: [number, number][] } => segment !== null),
+    [drivers, orders],
+  );
+
+  return (
+    <div className="relative h-full w-full overflow-hidden rounded-[32px] border border-slate-200 shadow-inner">
+      <div className="absolute left-4 top-4 z-[500] rounded-2xl border border-emerald-100 bg-white/90 px-4 py-3 text-xs font-medium text-slate-600 shadow-lg backdrop-blur">
+        <div className="font-bold text-emerald-700">Fallback Leaflet activo</div>
+        <div>Mapa operativo sin Google Maps API key.</div>
+      </div>
+      <MapContainer center={[DEFAULT_CENTER.lat, DEFAULT_CENTER.lng]} zoom={12} className="h-full w-full">
+        <TileLayer
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        />
+        <LeafletTracker orders={orders} trackedOrderId={trackedOrderId} />
+
+        {orders.filter((order) => order.lat && order.lng).map((order) => (
+          <CircleMarker
+            key={order.id}
+            center={[order.lat!, order.lng!]}
+            pathOptions={{
+              color:
+                order.status === 'Entregado'
+                  ? '#10b981'
+                  : order.status === 'En Ruta'
+                    ? '#3b82f6'
+                    : order.status === 'Retrasado'
+                      ? '#ef4444'
+                      : '#94a3b8',
+              fillOpacity: 0.9,
+            }}
+            radius={8}
+          >
+            <Popup>
+              <div className="space-y-1 text-xs">
+                <div className="font-bold">Pedido #{order.id}</div>
+                <div><strong>Cliente:</strong> {order.client}</div>
+                <div><strong>Dirección:</strong> {order.address}</div>
+                <div><strong>Estado:</strong> {order.status}</div>
+              </div>
+            </Popup>
+          </CircleMarker>
+        ))}
+
+        {drivers.filter((driver) => driver.lat && driver.lng).map((driver) => (
+          <CircleMarker
+            key={driver.id}
+            center={[driver.lat!, driver.lng!]}
+            pathOptions={{ color: '#0f172a', fillColor: '#10b981', fillOpacity: 0.95 }}
+            radius={10}
+          >
+            <Popup>
+              <div className="space-y-1 text-xs">
+                <div className="font-bold">{driver.name}</div>
+                <div><strong>Vehículo:</strong> {driver.vehicle}</div>
+                <div><strong>Pedidos:</strong> {driver.orders}</div>
+                <div><strong>Estado:</strong> {driver.status}</div>
+              </div>
+            </Popup>
+          </CircleMarker>
+        ))}
+
+        {routeSegments.map((segment) => (
+          <Polyline key={segment.id} positions={segment.points} pathOptions={{ color: '#10b981', weight: 4, opacity: 0.8 }} />
+        ))}
+      </MapContainer>
+    </div>
+  );
+};
+
 const Map: React.FC<MapProps> = (props) => {
   if (!hasValidKey) {
-    return (
-      <div className="w-full h-full bg-slate-50 flex items-center justify-center p-8 rounded-[32px] border border-slate-200">
-        <div className="text-center max-w-md">
-          <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-2xl flex items-center justify-center mx-auto mb-6">
-            <Navigation size={32} />
-          </div>
-          <h2 className="text-2xl font-bold text-slate-900 mb-4">Google Maps API Key Required</h2>
-          <p className="text-slate-500 mb-8 text-sm leading-relaxed">
-            Para ver el mapa en tiempo real y las rutas de despacho, necesitas configurar una clave de API de Google Maps Platform.
-          </p>
-          <div className="bg-white p-6 rounded-2xl border border-slate-100 text-left space-y-4 shadow-sm">
-            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Pasos para configurar:</p>
-            <ol className="text-xs text-slate-600 space-y-3 list-decimal pl-4">
-              <li>Obtén una clave en <a href="https://console.cloud.google.com/google/maps-apis/credentials" target="_blank" rel="noopener" className="text-emerald-600 font-bold underline">Google Cloud Console</a></li>
-              <li>Abre <strong>Settings</strong> (icono de engranaje arriba a la derecha)</li>
-              <li>Ve a <strong>Secrets</strong> y añade <code>GOOGLE_MAPS_PLATFORM_KEY</code></li>
-            </ol>
-          </div>
-        </div>
-      </div>
-    );
+    return <LeafletFallbackMap {...props} />;
   }
 
   return (
-    <div className="w-full h-full rounded-[32px] overflow-hidden border border-slate-200 shadow-inner relative">
+    <div className="relative h-full w-full overflow-hidden rounded-[32px] border border-slate-200 shadow-inner">
       <APIProvider apiKey={API_KEY} version="weekly">
         <GoogleMap
-          defaultCenter={{ lat: -12.0464, lng: -77.0297 }}
+          defaultCenter={DEFAULT_CENTER}
           defaultZoom={12}
           mapId="DEMO_MAP_ID"
-          className="w-full h-full"
+          className="h-full w-full"
           disableDefaultUI={true}
           zoomControl={true}
           internalUsageAttributionIds={['gmp_mcp_codeassist_v1_aistudio']}
         >
-          <MapContent {...props} />
+          <TrackOrderOnGoogleMap {...props} />
+          <GoogleRoutesOverlay {...props} />
+          <GoogleMarkers {...props} />
         </GoogleMap>
       </APIProvider>
     </div>

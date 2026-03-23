@@ -8,6 +8,8 @@ export interface RouteOptimizationResult {
   routes: Route[];
 }
 
+const MAX_TWO_OPT_PASSES = 20;
+
 export const optimizePendingRoutes = (
   orders: Order[],
   drivers: Driver[],
@@ -128,9 +130,11 @@ export const optimizePendingRoutes = (
 
     let improved = true;
     let bestDist = calculateRouteDist(optimizedStops);
+    let pass = 0;
 
-    while (improved) {
+    while (improved && pass < MAX_TWO_OPT_PASSES) {
       improved = false;
+      pass += 1;
       for (let i = 0; i < optimizedStops.length - 1; i += 1) {
         for (let k = i + 1; k < optimizedStops.length; k += 1) {
           const newStops = [

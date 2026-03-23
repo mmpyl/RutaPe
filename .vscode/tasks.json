@@ -36,7 +36,7 @@
         "background": {
           "activeOnStart": true,
           "beginsPattern": ".+",
-          "endsPattern": "Server running on http://localhost:\\d+"
+          "endsPattern": "\"event\":\"server_started\".*\"url\":\"http://localhost:\\d+\""
         }
       }
     },
@@ -67,6 +67,32 @@
         "panel": "shared"
       },
       "problemMatcher": []
+    },
+    {
+      "label": "RutaPe: start",
+      "type": "shell",
+      "command": "npm run start",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      },
+      "isBackground": true,
+      "problemMatcher": {
+        "owner": "custom",
+        "pattern": [
+          {
+            "regexp": ".+"
+          }
+        ],
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": ".+",
+          "endsPattern": "\"event\":\"server_started\".*\"url\":\"http://localhost:\\d+\""
+        }
+      }
     }
   ]
 }

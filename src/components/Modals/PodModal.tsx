@@ -13,6 +13,7 @@ interface PodModalProps {
 const CANVAS_WIDTH = 520;
 const CANVAS_HEIGHT = 180;
 const MAX_PHOTO_SIZE_BYTES = 4 * 1024 * 1024;
+const ALLOWED_POD_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif'];
 
 const PodModal: React.FC<PodModalProps> = ({ isOpen, orderId, onClose, onSubmit }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -128,8 +129,8 @@ const PodModal: React.FC<PodModalProps> = ({ isOpen, orderId, onClose, onSubmit 
     const file = event.target.files?.[0];
     if (!file) return;
 
-    if (!file.type.startsWith('image/')) {
-      setError('Solo puedes adjuntar imágenes como evidencia POD.');
+    if (!ALLOWED_POD_IMAGE_TYPES.includes(file.type)) {
+      setError('Solo puedes adjuntar imágenes PNG, JPG, WEBP o GIF como evidencia POD.');
       event.target.value = '';
       return;
     }

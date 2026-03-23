@@ -10,12 +10,23 @@ const parseErrorMessage = async (response: Response, fallback: string) => {
   return fallback;
 };
 
-export const requestJson = async <T>(input: RequestInfo | URL, init?: RequestInit, fallbackError = 'Request failed'): Promise<T> => {
+export const requestJson = async <T>(
+  input: RequestInfo | URL,
+  init?: RequestInit,
+  fallbackError = 'Request failed',
+  validate?: (value: unknown) => value is T,
+): Promise<T> => {
   const response = await fetch(input, init);
 
   if (!response.ok) {
     throw new Error(await parseErrorMessage(response, fallbackError));
   }
 
-  return response.json() as Promise<T>;
+  const data = (await response.json()) as unknown;
+
+  if (validate && !validate(data)) {
+    throw new Error('Unexpected response payload');
+  }
+
+  return data as T;
 };
