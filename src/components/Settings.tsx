@@ -43,6 +43,8 @@ const Settings: React.FC = () => {
 
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
         <section className="space-y-6 lg:col-span-2">
+
+          {/* Artículo: Claves de API */}
           <article className="space-y-8 rounded-[40px] border border-slate-100 bg-white p-10 shadow-sm">
             <div className="flex items-center gap-4">
               <div className="rounded-2xl bg-emerald-50 p-4 text-emerald-600">
@@ -88,7 +90,6 @@ const Settings: React.FC = () => {
                 ))}
               </div>
             </div>
-          </div>
 
             <div className="flex items-center justify-between gap-4 border-t border-slate-50 pt-6">
               <p className="max-w-md text-xs leading-relaxed text-slate-400">
@@ -102,6 +103,7 @@ const Settings: React.FC = () => {
             </div>
           </article>
 
+          {/* Artículo: Webhooks */}
           <article className="space-y-8 rounded-[40px] border border-slate-100 bg-white p-10 shadow-sm">
             <div className="flex items-center gap-4">
               <div className="rounded-2xl bg-blue-50 p-4 text-blue-600">
@@ -112,11 +114,6 @@ const Settings: React.FC = () => {
                 <p className="text-sm text-slate-400">Recibe notificaciones en tiempo real en tu servidor.</p>
               </div>
             </div>
-            <div>
-              <h3 className="text-xl font-bold text-slate-900">Webhooks</h3>
-              <p className="text-sm text-slate-400">Recibe notificaciones en tiempo real en tu servidor.</p>
-            </div>
-          </div>
 
             <div className="space-y-6">
               <div className="flex items-center justify-between rounded-3xl border border-slate-100 bg-slate-50 p-6">
@@ -138,6 +135,7 @@ const Settings: React.FC = () => {
               </button>
             </div>
           </article>
+
         </section>
 
         <aside className="space-y-8">
